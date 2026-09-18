@@ -1,0 +1,147 @@
+name: Poll of Polls
+
+# Weekly and on every push: scrape polls, refit the ensemble, forecast, publish the report to GitHub Pages
+# (Settings > Pages > Source: GitHub Actions). Backtests (about an hour per election on a hosted runner) only
+# run when requested from the Actions tab; they refit the stacking weights committed in output/backtest/.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 21 * * 0"   # Mondays 09:00 NZST / 10:00 NZDT
+  workflow_dispatch:
+    inputs:
+      backtest:
+        description: "Re-run the rolling-origin backtests and refit the stacking weights"
+        type: boolean
+        default: false
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q
+
+  backtest:
+    if: github.event_name == 'workflow_dispatch' && inputs.backtest
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [2017, 2020, 2023]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - run: pollofpolls fetch
+      - run: pollofpolls prep
+      # start from nothing so only this job's election is uploaded; stale committed cases for the other
+      # elections must not reach the merge in backtest-aggregate
+      - run: rm -rf output/backtest/cases output/backtest/fits
+      - run: pollofpolls backtest --targets ${{ matrix.target }} --no-aggregate --force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backtest-${{ matrix.target }}
+          path: |
+            output/backtest/cases/*_${{ matrix.target }}_h*.json
+            output/backtest/fits/*_${{ matrix.target }}_h*
+          if-no-files-found: error
+          retention-days: 30
+
+  backtest-aggregate:
+    needs: backtest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - run: rm -rf output/backtest/cases output/backtest/fits
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: backtest-*
+          path: output/backtest
+          merge-multiple: true
+      - name: Check every election was rebuilt
+        run: |
+          for y in 2017 2020 2023; do ls output/backtest/cases/*_${y}_h*.json > /dev/null; done
+      - run: pollofpolls backtest --no-run
+      - name: Commit backtest results
+        run: |
+          git config user.name "poll-of-polls-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/backtest/*.csv output/backtest/*.json output/backtest/cases
+          git diff --cached --quiet || git commit -m "Update backtests and stacking weights $(date -u +%Y-%m-%d)"
+          git pull --rebase && git push
+
+  run:
+    needs: [test, backtest-aggregate]
+    if: always() && needs.test.result == 'success' && needs.backtest-aggregate.result != 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # includes stacking weights committed by backtest-aggregate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - name: Restore cached fits
+        uses: actions/cache@v4
+        with:
+          path: data/processed
+          key: fits-${{ hashFiles('src/pollofpolls/**', 'config/**') }}-${{ github.run_id }}
+          restore-keys: |
+            fits-${{ hashFiles('src/pollofpolls/**', 'config/**') }}-
+      - run: pollofpolls fetch
+      - run: pollofpolls prep
+      - run: pollofpolls fit
+      - run: pollofpolls forecast
+      - run: pollofpolls report
+      - name: Commit forecast outputs
+        run: |
+          git config user.name "poll-of-polls-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/*.csv output/*.json
+          git diff --cached --quiet || git commit -m "Update forecast $(date -u +%Y-%m-%d)"
+          git pull --rebase && git push
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: run
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

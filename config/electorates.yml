@@ -1,0 +1,34 @@
+# Electorate assumptions for the 2026 seat simulation. These are editorial assumptions, not model output.
+#
+# For each electorate that matters to the seat allocation (a sub-5% party winning it, or a candidate
+# outside the party lists winning it) we give the probability `p` that `party` wins it when the party's
+# nationwide vote equals `at_share`. The logit of p shifts by `slope` per percentage point that the
+# simulated party vote differs from at_share, so electorate wins move with the party vote.
+# `independent_p` is the probability the seat goes to an independent / non-list candidate, which removes
+# one seat from the 120-seat proportional pool (Electoral Act 1993). The party, the independent and everyone
+# else are mutually exclusive: at `at_share` they have probabilities p, independent_p and 1 - p - independent_p;
+# as the party's vote moves, the independent keeps the same share of the probability the party does not take.
+#
+# Parties above 5% (National, Labour, Green in practice) winning electorates does not change the
+# proportional allocation, so those electorates are not listed unless the party could fall below 5%.
+electorates:
+  - {electorate: Epsom,             party: ACT,            p: 0.90, at_share: 0.09, slope: 0.30}
+  - {electorate: Auckland Central,  party: Green,          p: 0.55, at_share: 0.12, slope: 0.30}
+  - {electorate: Wellington Central, party: Green,         p: 0.55, at_share: 0.12, slope: 0.30}
+  - {electorate: Rongotai,          party: Green,          p: 0.50, at_share: 0.12, slope: 0.30}
+  - {electorate: Waiariki,          party: Te Pāti Māori,  p: 0.80, at_share: 0.03, slope: 0.40}
+  - {electorate: Te Tai Hauāuru,    party: Te Pāti Māori,  p: 0.65, at_share: 0.03, slope: 0.40}
+  - {electorate: Hauraki-Waikato,   party: Te Pāti Māori,  p: 0.65, at_share: 0.03, slope: 0.40}
+  - {electorate: Tāmaki Makaurau,   party: Te Pāti Māori,  p: 0.60, at_share: 0.03, slope: 0.40}
+  - {electorate: Te Tai Tonga,      party: Te Pāti Māori,  p: 0.35, at_share: 0.03, slope: 0.40, independent_p: 0.35}   # Tākuta Ferris (independent)
+  - {electorate: Te Tai Tokerau,    party: Te Pāti Māori,  p: 0.35, at_share: 0.03, slope: 0.40, independent_p: 0.35}   # Mariameno Kapa-Kingi (Te Tai Tokerau Party)
+  - {electorate: Ikaroa-Rāwhiti,    party: Te Pāti Māori,  p: 0.30, at_share: 0.03, slope: 0.40}
+
+# Coalition scenarios reported. Majority is computed per simulation from the simulated House size.
+coalitions:
+  - {name: "National + ACT + NZ First", parties: [National, ACT, NZ First]}
+  - {name: "National + ACT",            parties: [National, ACT]}
+  - {name: "National + NZ First",       parties: [National, NZ First]}
+  - {name: "Labour + Green + Te Pāti Māori", parties: [Labour, Green, Te Pāti Māori]}
+  - {name: "Labour + Green",            parties: [Labour, Green]}
+  - {name: "Labour + Green + NZ First", parties: [Labour, Green, NZ First]}

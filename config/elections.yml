@@ -1,0 +1,57 @@
+# Election calendar and party configuration.
+# pm_party = party of the Prime Minister going into that election (used by the fundamentals prior).
+elections:
+  - {year: 2008, date: 2008-11-08, pm_party: Labour}
+  - {year: 2011, date: 2011-11-26, pm_party: National}
+  - {year: 2014, date: 2014-09-20, pm_party: National}
+  - {year: 2017, date: 2017-09-23, pm_party: National}
+  - {year: 2020, date: 2020-10-17, pm_party: Labour}
+  - {year: 2023, date: 2023-10-14, pm_party: Labour}
+  - {year: 2026, date: 2026-11-07, pm_party: National, forecast: true}
+
+# Prime Minister's party at MMP elections before 2008, for the fundamentals prior (Ellis 2020).
+# Party-vote results for these years are in data/reference/election_results.csv (1993 is FPP).
+pm_history:
+  - {year: 1996, pm_party: National}
+  - {year: 1999, pm_party: National}
+  - {year: 2002, pm_party: Labour}
+  - {year: 2005, pm_party: Labour}
+
+# First election used as the anchor of the latent state. Everything earlier is ignored.
+anchor_election: 2011
+
+# Weeks before each election treated as "campaign" (innovation variance scaled by kappa).
+campaign_weeks: 8
+
+# Parties with seats in Parliament at the start of each cycle. Always tracked in that cycle.
+in_parliament:
+  2014: [National, Labour, Green, NZ First, Te Pāti Māori, ACT, United Future, Mana]
+  2017: [National, Labour, Green, NZ First, Te Pāti Māori, ACT, United Future]
+  2020: [National, Labour, Green, NZ First, ACT]
+  2023: [National, Labour, Green, ACT, Te Pāti Māori]
+  2026: [National, Labour, Green, ACT, NZ First, Te Pāti Māori]
+
+# Additional parties are tracked in a cycle when they exceed min_share in at least min_polls polls
+# of that cycle (same rule as the 2023 NZ Herald model). Everything else is folded into "Other".
+auto_track: {min_share: 0.025, min_polls: 4}
+
+# Seats at dissolution (documentation only; not used by the model).
+parliament_2026:
+  National: 49
+  Labour: 34
+  Green: 15
+  ACT: 11
+  NZ First: 8
+  Te Pāti Māori: 4
+  Independent: 2
+
+colours:
+  National: "#065BAA"
+  Labour: "#d82c20"
+  Green: "#00491E"
+  ACT: "#ffd100"
+  NZ First: "#212529"
+  Te Pāti Māori: "#D12C38"
+  TOP: "#09B598"
+  New Conservative: "#00AEEF"
+  Other: "#B3B3B3"

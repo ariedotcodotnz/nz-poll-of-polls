@@ -1,0 +1,92 @@
+# Pollster canonicalisation and metadata.
+# `match` is a case-insensitive regex applied to the cleaned Wikipedia "Polling organisation" string.
+# `sample_size` is used when Wikipedia does not report one.
+# `polling_code` = signatory of the NZ Political Polling Code (only used when polling_code_only is true).
+defaults:
+  sample_size: 1000
+  min_polls: 2            # pollsters with fewer eligible polls are dropped
+  polling_code_only: false
+  # Days from the end of fieldwork until a poll is typically published. Wikipedia lists fieldwork dates only,
+  # so backtests treat a poll as available at fieldwork end + this delay. Approximate; the live forecast
+  # ignores it because every poll on the page has already been published.
+  publication_lag_days: 5
+
+# Sponsored / internal releases are excluded by default: they are published selectively.
+exclude_patterns:
+  - "^Labour[–-]"
+  - "^National[–-]"
+  - "^Business NZ[–-]"
+  - "UMR"
+
+pollsters:
+  - name: Verian
+    publication_lag_days: 2
+    match: "Colmar Brunton|Kantar|Verian"
+    sample_size: 1000
+    polling_code: true
+  - name: Reid Research
+    publication_lag_days: 2
+    match: "Reid Research"
+    sample_size: 1000
+    polling_code: true
+    # 2017: moved to a 25% online sample (Ellis 2017). Creates a separate house-effect segment.
+    method_changes: [2017-01-01]
+  - name: Curia
+    publication_lag_days: 5
+    match: "Curia"
+    sample_size: 1000
+    polling_code: true
+  - name: Roy Morgan
+    publication_lag_days: 10
+    match: "Roy Morgan"
+    sample_size: 900
+    polling_code: false
+  - name: Talbot Mills
+    publication_lag_days: 10
+    match: "Talbot Mills"
+    sample_size: 1000
+    polling_code: true
+  - name: Freshwater Strategy
+    publication_lag_days: 3
+    match: "Freshwater"
+    sample_size: 1000
+    polling_code: false
+  - name: Horizon Research
+    publication_lag_days: 7
+    match: "Horizon"
+    sample_size: 1000
+    polling_code: false
+  - name: Guardian Essential
+    publication_lag_days: 3
+    match: "Essential"
+    sample_size: 1000
+    polling_code: false
+  - name: Anacta
+    publication_lag_days: 3
+    match: "Anacta"
+    sample_size: 1700
+    polling_code: false
+  - name: DigiPoll
+    match: "Digi ?Poll"
+    sample_size: 750
+    polling_code: false
+  - name: Ipsos
+    match: "Ipsos"
+    sample_size: 1000
+    polling_code: false
+  - name: Research International
+    match: "Research International"
+    sample_size: 1000
+    polling_code: false
+  - name: YouGov
+    match: "YouGov"
+    sample_size: 1000
+    polling_code: false
+  - name: Bauer Media Insights
+    match: "Bauer"
+    sample_size: 1000
+    polling_code: false
+  - name: SSI
+    match: "SSI"
+    sample_size: 1000
+    polling_code: false

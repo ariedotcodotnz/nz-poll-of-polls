@@ -1,0 +1,59 @@
+# Model variants and inference settings.
+#
+# obs:            dm (Dirichlet-multinomial on counts) | gaussian (normal on shares, incl. rounding error)
+#                 | kalman (normal on log-ratios, state integrated out by a Kalman filter; experimental)
+#                 | legacy (re-implementation of the 2023 NZ Herald model; backtest baseline only)
+# house:          constant (one bias per pollster segment) | cycle (persistent bias + per-term deviation)
+# industry_error: error shared by all pollsters, linear within a term from its post-election value to its
+#                 election-day value; the forecast term's election-day value is a fresh draw
+# campaign_kappa: innovation sd multiplier in the final campaign weeks, learned from past terms
+# innovations:    normal (default) | student_t (shared weekly shock scale, innovation_df degrees of freedom)
+# fundamentals:   Ellis-style Student-t prior on the PM party's swing, estimated from earlier elections only
+variants:
+  legacy: {obs: legacy}
+  base:   {obs: dm,       house: cycle, industry_error: true, campaign_kappa: true}
+  gauss:  {obs: gaussian, house: cycle, industry_error: true, campaign_kappa: true}
+  heavy:  {obs: gaussian, house: cycle, industry_error: true, campaign_kappa: true, innovations: student_t, innovation_df: 4}
+  fund:   {obs: gaussian, house: cycle, industry_error: true, campaign_kappa: true, fundamentals: true}
+  kal:    {obs: kalman,   house: cycle, industry_error: true, campaign_kappa: true}
+
+# Candidate variants for the published ensemble. Weights come from CRPS stacking on the backtests
+# (output/backtest/stacking.json); equal weights are used when any candidate lacks a backtested weight.
+# `fund` is excluded: in backtests the fundamentals prior pulled 2020 and 2023 forecasts towards the previous
+# result of the PM's party and made them worse at every horizon.
+ensemble: [base, gauss, heavy]
+
+mcmc:
+  chains: 4
+  warmup: 1000
+  samples: 1000
+  max_tree_depth: 10
+  target_accept: 0.9
+  seed: 2026
+
+priors:
+  sigma_scale: 0.06          # HalfNormal scale for the weekly innovation sd on the log-ratio scale
+  lkj_eta: 2.0
+  house_base_sd: 0.12        # persistent pollster bias per party, logit scale (0.12 ~ 3 pp for a 40% party)
+  house_cycle_sd_scale: 0.05 # HalfNormal scale for the sd of per-term deviations
+  industry_sd_scale: 0.15    # HalfNormal scale for the sd of the common start / election-day polling error
+  kappa_sd: 0.3              # LogNormal sd for the campaign multiplier
+  design_effect_median: 2.0  # prior median of the per-pollster variance inflation
+  design_effect_sd: 0.4      # LogNormal sd around that median
+  fundamentals: {df: 4}      # mean and sd are estimated from past PM-party swings (no look-ahead)
+
+election_obs_sd: 0.01        # only used by the Kalman variant (the other variants pin results exactly)
+
+backtest:
+  variants: [legacy, base, gauss, heavy]
+  targets: [2017, 2020, 2023]
+  horizons_weeks: [26, 8, 4, 1]
+  mcmc: {chains: 2, warmup: 500, samples: 500}
+
+seats:
+  n_sims: 4000
+
+forecast:
+  # Rescale the ensemble's spread by the horizon-dependent factor fitted in the backtests
+  # (output/backtest/stacking.json "spread"). Off unless it improves the out-of-sample backtest CRPS.
+  calibrate_spread: false

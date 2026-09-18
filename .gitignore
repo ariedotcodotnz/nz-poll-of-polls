@@ -1,13 +1,35 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
 
-/.quarto/
-_targets
-_site
-*_files
-stan/model2023
-.stan
-stan/model2020
+# pipeline caches (regenerated)
+data/raw/
+data/processed/
+*.nc
+
+# rendered outputs (committed by CI only)
+site/
 output/*.svg
+output/*.png
+output/*.npz
+output/backtest/fits/
+
+# legacy R artefacts
+legacy-r/.Rproj.user
+legacy-r/.Rhistory
+legacy-r/.RData
+legacy-r/_targets
+legacy-r/_site
+legacy-r/.quarto/
+legacy-r/*_files
+legacy-r/stan/model2023
+legacy-r/stan/model2020
+legacy-r/.stan/*
+!legacy-r/.stan/.gitkeep
+
