@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-19T02:55:02+00:00",
+ "generated_at": "2026-09-19T08:08:22+00:00",
  "election_date": "2026-11-07",
  "days_to_election": 49,
  "cutoff": "2026-09-19",
@@ -520,6 +520,7 @@
      "TOP": 0.10775
     },
     "p_any_one": 0.599,
+    "p_needs_several": 0.30425,
     "p_needs_all": 0.30425,
     "p_short": 0.0915
    },
@@ -540,6 +541,7 @@
      "TOP": 0.26575
     },
     "p_any_one": 0.80575,
+    "p_needs_several": 0.124,
     "p_needs_all": 0.124,
     "p_short": 0.01025
    }
@@ -561,6 +563,7 @@
      "TOP": 0.00775
     },
     "p_any_one": 0.55375,
+    "p_needs_several": 0.438,
     "p_needs_all": 0.438,
     "p_short": 0.00825
    },
@@ -581,6 +584,7 @@
      "TOP": 0.23075
     },
     "p_any_one": 0.9675,
+    "p_needs_several": 0.031,
     "p_needs_all": 0.031,
     "p_short": 0.0
    }
