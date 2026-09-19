@@ -53,6 +53,32 @@ def bloc_probability(draws: np.ndarray, parties: list[str], blocs: tuple[list[st
     return float(event(draws.copy()).mean()), bool(event(outcome[None, :].copy())[0])
 
 
+def rescore_blocs(cfg: Config, out_dir: Path, record: dict, electorates: dict[int, dict[str, int]]) -> dict:
+    """A cached case, with its bloc event scored against the current backtest.blocs.
+
+    A case stores the bloc probability, outcome and Brier score it was fitted with. If backtest.blocs has changed
+    since, they are recomputed from the cached fit and the case file is rewritten, so that every variant and the
+    ensembles score the same event.
+    """
+    right, left = blocs_for(cfg, record["target"])
+    blocs = {"right": right, "left": left}
+    if record.get("blocs") == blocs:
+        return record
+    tag = _tag(record["variant"], record["target"], record["horizon_weeks"])
+    prefix = out_dir / "fits" / tag
+    if not prefix.with_suffix(".npz").exists():
+        raise RuntimeError(f"backtest case {tag} was scored with other blocs than backtest.blocs and its fit is not "
+                           f"cached; rerun it with: pollofpolls backtest --targets {record['target']} --force")
+    parties = record["parties"]
+    outcome = np.array([record["outcome"][p] for p in parties])
+    p_event, actual = bloc_probability(FitResult.load(prefix).pi_target, parties, (right, left),
+                                       electorates.get(record["target"], {}), outcome)
+    record = {**record, "blocs": blocs, "p_right_bloc_ahead": p_event, "right_bloc_ahead": actual,
+              "brier_bloc": brier(p_event, actual)}
+    (out_dir / "cases" / f"{tag}.json").write_text(json.dumps(record, ensure_ascii=False, indent=1))
+    return record
+
+
 def fit_fingerprint(cfg: Config, ds, variant: dict, mcmc_cfg: dict) -> str:
     """Everything a fit depends on: the full dataset, the variant, priors, sampler settings and model code."""
     return fingerprint([ds.fingerprint(), json.dumps(variant, sort_keys=True), json.dumps(cfg.priors, sort_keys=True),
@@ -84,11 +110,12 @@ def backtest_case(cfg: Config, polls: pl.DataFrame, results: dict, target: int, 
     outcome = result_vector(results[target], ds.parties)
     draws = fr.pi_target
     el = load_electorate_seats(cfg.paths.reference / "electorate_seats.csv").get(target, {})
-    p_event, actual = bloc_probability(draws, ds.parties, blocs_for(cfg, target), el, outcome)
+    right, left = blocs_for(cfg, target)
+    p_event, actual = bloc_probability(draws, ds.parties, (right, left), el, outcome)
     record = {
         "target": target, "horizon_weeks": horizon_weeks, "variant": variant_name, "cutoff": cutoff.isoformat(),
-        "n_polls": int(ds.N), "parties": ds.parties, "p_right_bloc_ahead": p_event, "right_bloc_ahead": actual,
-        "brier_bloc": brier(p_event, actual),
+        "n_polls": int(ds.N), "parties": ds.parties, "blocs": {"right": right, "left": left},
+        "p_right_bloc_ahead": p_event, "right_bloc_ahead": actual, "brier_bloc": brier(p_event, actual),
         "forecast_mean": {p: float(v) for p, v in zip(ds.parties, draws.mean(0))},
         "outcome": {p: float(v) for p, v in zip(ds.parties, outcome)},
         "diagnostics": fr.diagnostics, **score_forecast(draws, ds.parties, outcome),
@@ -138,12 +165,13 @@ def aggregate(cfg: Config, out_dir: Path, ensemble: list[str], baseline: str = "
     rows = load_cases(out_dir)
     if not rows:
         raise RuntimeError(f"no backtest cases under {out_dir / 'cases'}")
+    el_all = load_electorate_seats(cfg.paths.reference / "electorate_seats.csv")
+    rows = [rescore_blocs(cfg, out_dir, r, el_all) for r in rows]
     by_case: dict[tuple[int, int], dict[str, dict]] = {}
     for r in rows:
         by_case.setdefault((r["target"], r["horizon_weeks"]), {})[r["variant"]] = r
     # ensemble members that have been backtested; cases missing any of them are left out of the stacking
     ens = [v for v in ensemble if any(v in c for c in by_case.values())]
-    el_all = load_electorate_seats(cfg.paths.reference / "electorate_seats.csv")
 
     comps, draws_by_case = {}, {}
     for key, variants in sorted(by_case.items()):

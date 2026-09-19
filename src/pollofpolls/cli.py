@@ -63,7 +63,7 @@ def backtest(variants: Optional[str] = None, targets: Optional[str] = None, hori
 
 @app.command()
 def report(root: Optional[Path] = None):
-    """Render charts (output/*.svg) and the HTML report (site/index.html)."""
+    """Build the website with Quarto: static charts in output/, pages and downloads in site/."""
     from .report.render import render_report
     render_report(_cfg(root))
 

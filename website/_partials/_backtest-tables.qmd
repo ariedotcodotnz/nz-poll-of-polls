@@ -1,0 +1,5 @@
+```{python}
+#| output: asis
+# The latest backtest scores, shared by the forecast page and "How it is tested".
+print(site.backtest_tables())
+```

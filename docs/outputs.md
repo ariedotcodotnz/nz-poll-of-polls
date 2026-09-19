@@ -8,7 +8,7 @@ the forecast of 7 November or `now` for "if the election were held now".
 
 ### summary.json
 
-Everything the report shows, in one file.
+Everything the website shows, in one file.
 
 | Key | Meaning |
 |---|---|
@@ -21,7 +21,7 @@ Everything the report shows, in one file.
 | `election_day`, `now` | per party: `mean`, quantiles and `p_over_5pct` |
 | `seats_election_day` | per party: seat mean and quantiles, and `p_any_seats` |
 | `coalitions_election_day`, `coalitions_now` | per coalition: seats and `p_majority` |
-| `balance_of_power` | for `election_day` and `now`, per bloc: `p_alone`, `p_with` (each pivot party alone enough), `p_any_one`, `p_needs_all` and `p_short`; the four outcomes other than `p_with` are exclusive and sum to one |
+| `balance_of_power` | for `election_day` and `now`, per bloc: `p_alone`, `p_with` (each pivot party alone enough), `p_any_one`, `p_needs_several` (a majority only with two or more pivots together), `p_needs_all` (every pivot needed) and `p_short`. `p_alone`, `p_any_one`, `p_needs_several` and `p_short` are exclusive and sum to one; with two pivots `p_needs_all` equals `p_needs_several` |
 | `expected_house_size`, `p_overhang` | size of the House, including overhang |
 | `diagnostics` | per variant: divergences, largest R-hat, smallest effective sample size, run time |
 
@@ -57,6 +57,7 @@ The SVG file names are the ones the 2023 pipeline produced, so existing embeds k
 | File | Chart |
 |---|---|
 | `voting_intention620.svg`, `voting_intention375.svg` | support over time by party, in two columns (620 px) or one (375 px) |
+| `voting_intention_all620.svg`, `voting_intention_all375.svg` | every party on one chart this term; end labels at 620 px, a legend at 375 px |
 | `election_night620.svg`, `election_night375.svg` | seat distributions of each coalition on election day |
 | `saturday620.svg`, `saturday375.svg` | the same if the election were held now |
 
@@ -67,7 +68,7 @@ The SVG file names are the ones the 2023 pipeline produced, so existing embeds k
 
 | File | Contents |
 |---|---|
-| `cases/<variant>_<year>_h<weeks>.json` | one backtest case: cutoff, number of polls, forecast mean, outcome, scores, diagnostics |
+| `cases/<variant>_<year>_h<weeks>.json` | one backtest case: cutoff, number of polls, forecast mean, outcome, scores, diagnostics, and the `blocs` its bloc-lead score used. Aggregation rescores a case from its cached fit when `backtest.blocs` has changed. |
 | `scores.csv` | one row per case, including the `ensemble`, `calibrated` and `equal` mixtures; per-party columns such as `crps_pp[National]`, `error_pp[National]`, `sd_pp[National]` and `pit[National]` |
 | `summary.csv`, `summary_by_horizon.csv` | mean scores per variant, overall and by horizon |
 | `head_to_head.csv` | the ensemble and the calibrated ensemble against the 2023 model replica, case by case |
@@ -76,12 +77,21 @@ The SVG file names are the ones the 2023 pipeline produced, so existing embeds k
 | `probe_fundamentals.json` | the test of the fundamentals prior on 2023 at eight weeks |
 | `fits/` | cached backtest fits and their fingerprints; not committed |
 
-Score definitions are in [Evaluation](evaluation.md).
+Score definitions are in [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html).
 
 ## site/ (published to GitHub Pages)
 
-`index.html` is the report. It is a single page whose chart data is embedded, and it loads Plotly from a CDN.
-The CSV, JSON and SVG outputs are copied next to it, and the backtest tables (`summary.csv`,
+Built by Quarto from `website/`; see [Development](development.md#the-website).
+
+| File | Contents |
+|---|---|
+| `index.html` | the forecast, from `website/index.qmd`; chart data is embedded |
+| `model.html` | "How the model works", from `website/model.qmd` |
+| `evaluation.html` | "How it is tested", from `website/evaluation.qmd`, with the latest backtest results |
+| `site_libs/` | Quarto's scripts and styles |
+| `sitemap.xml`, `robots.txt`, `search.json` | written by Quarto |
+
+Plotly, KaTeX and the web fonts load from CDNs. The CSV, JSON and SVG outputs are copied next to the pages, and the backtest tables (`summary.csv`,
 `summary_by_horizon.csv`, `head_to_head.csv`, `scores.csv`, `stacking.json`, `probe_fundamentals.json`) into
 `backtest/`. The page's Data section links to all of them, so they can be downloaded from the published site.
 

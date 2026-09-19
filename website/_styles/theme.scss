@@ -1,0 +1,31 @@
+/*-- scss:defaults --*/
+// Continues the 2023 NZ Herald site: Bootswatch Sandstone with Source Sans and Source Code Pro.
+$font-family-sans-serif: "Source Sans 3", "Source Sans Pro", -apple-system, "Segoe UI", Roboto, sans-serif;
+$font-family-monospace: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+/*-- scss:rules --*/
+// headline tiles: one per coalition
+.tiles { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 1rem 0 1.5rem; }
+.tile { border: 1px solid $border-color; border-radius: .5rem; padding: .6rem .85rem; }
+.tile p { margin: 0; }
+.tile-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+.tile-label { color: $text-muted; font-size: .85rem; }
+
+// computed tables: numbers line up, and wide tables scroll rather than squeeze
+.table-scroll { overflow-x: auto; margin-bottom: 1rem; }
+.table-scroll table { margin-bottom: .25rem; }
+.table-scroll td, .table-scroll th { font-variant-numeric: tabular-nums; }
+.table-scroll td:not(:first-child) { white-space: nowrap; }        // numbers stay whole; labels and headers wrap
+.table-scroll td:first-child { min-width: 11rem; }
+.swatch { display: inline-block; width: .7em; height: .7em; border-radius: 2px; margin-right: .45em; }
+.muted { color: $text-muted; }
+
+// charts come in a two-column and a one-column version; phones get the second
+.narrow-only { display: none; }
+@media (max-width: 699.98px) {
+  .wide-only { display: none; }
+  .narrow-only { display: block; }
+}
+
+// display equations scroll on their own rather than widening the page
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: .25rem 0; }

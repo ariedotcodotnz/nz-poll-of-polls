@@ -21,7 +21,10 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "plotly>=5.20",
     "matplotlib>=3.8",
-    "jinja2>=3.1",
+    # the website's Quarto pages run their Python through Jupyter
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "ipykernel>=6.29",
     "typer>=0.12",
     "pyyaml>=6",
 ]
@@ -34,9 +37,6 @@ pollofpolls = "pollofpolls.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-pollofpolls = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

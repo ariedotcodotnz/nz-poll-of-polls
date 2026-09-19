@@ -1,0 +1,121 @@
+---
+title: "How it is tested"
+description: "How the NZ Poll of Polls model is backtested on past elections, scored with proper scoring rules, and combined into the published forecast."
+---
+
+{{< include _partials/_setup.qmd >}}
+
+```{python}
+#| include: false
+# numbers quoted below, from config/model.yml and output/backtest/; "–" where a result is missing
+from collections import defaultdict
+
+design = site.design_facts()
+facts = defaultdict(lambda: "–", site.backtest_facts())
+probe = defaultdict(lambda: "–", site.probe_facts())
+```
+
+Every modelling choice in this project was kept or dropped on evidence from backtests: refitting the model as it
+would have run before past elections, and scoring the forecasts against what happened.
+
+## Backtest design
+
+* **Targets.** The `{python} design["targets"]` elections.
+* **Horizons.** Forecasts made `{python} design["horizons"]` weeks before each election:
+  `{python} design["n_cases"]` cases per variant.
+* **Information set.** Only the polls available at the cutoff, and only the results of earlier elections.
+  Wikipedia records when fieldwork happened, not when a poll was published, so a poll counts once its fieldwork
+  has ended and a typical publication delay for its pollster has passed (`publication_lag_days` in
+  `config/pollsters.yml`: 2 days for Verian and Reid Research, 10 for Roy Morgan and Talbot Mills, 5 by default).
+  The tracked parties, the pollsters kept and the fundamentals prior are all derived from that information set
+  too.
+* **Variants.** The 2023 model replica (`legacy`), `base`, `gauss` and `heavy`, with `{python} design["chains"]`
+  chains of `{python} design["warmup"]` warmup and `{python} design["draws"]` draws each. The fundamentals variant
+  was tested separately; see [below](#fundamentals-prior).
+
+## Scores
+
+Scores use the vote shares of the tracked parties, excluding the residual "Other" category.
+
+| Score | What it measures | Better |
+|---|---|---|
+| CRPS | error of the whole forecast distribution, in percentage points; equals the absolute error for a point forecast | lower |
+| Energy score | multivariate CRPS over all tracked parties jointly | lower |
+| Mean absolute error | error of the forecast mean | lower |
+| 90% and 50% coverage | share of party results inside the central 90% and 50% intervals | close to 0.9 and 0.5 |
+| Brier score (bloc lead) | probability forecast of the right bloc winning more seats than the left bloc, using the electorates each party actually won | lower |
+
+A log score on the log-ratio scale was tried first and rejected. Parties on 0.1% to 0.5%, such as United Future
+in 2017, dominated it, although their errors do not affect seats.
+
+## Combining variants
+
+The published forecast is a weighted mixture of variants. The weights come from **stacking on CRPS**
+(Yao, Vehtari, Simpson and Gelman 2018): choose weights $w$ on the simplex that minimise the total CRPS of the
+mixture over all backtest cases. For a mixture the CRPS is a convex quadratic,
+
+$$\text{CRPS}(w) = w^\top A - \tfrac{1}{2}\, w^\top B\, w, \qquad A_a = \mathbb{E}|X_a - y|, \quad B_{ab} = \mathbb{E}|X_a - X_b'|,$$
+
+summed over parties and cases, and a small quadratic programme (SLSQP) finds its minimum.
+
+The weights used for {{< var election.year >}} are fitted on all `{python} facts["n_cases"]` cases:
+`{python} facts["weights"]`.
+
+To score the ensemble honestly, each election is held out in turn and its weights are fitted on the other
+elections only (`{python} facts["loeo"]`). The equal-weight mixture of the candidates is scored for comparison.
+
+## Spread calibration
+
+A common post-processing step (EMOS, Gneiting and others 2005) rescales a forecast's spread by a factor learned
+from past errors. Here the factor is $c(h) = \exp(a + b \log h)$ for a forecast $h$ weeks out, applied on the
+log-ratio scale about the mixture mean, and fitted by minimising CRPS. It is evaluated with nested hold-outs:
+when an election is held out, neither the spread factor nor the stacking weights inside its training mixtures
+see that election's result.
+
+Out of sample, the calibrated ensemble scored a CRPS of `{python} facts["calibrated_crps"]` against
+`{python} facts["ensemble_crps"]` without calibration, and its 90% coverage `{python} facts["shortest"]` out was
+`{python} facts["calibrated_cov_short"]` against `{python} facts["ensemble_cov_short"]`. It is off
+(`forecast.calibrate_spread`).
+
+## Results
+
+These tables are rebuilt from `output/backtest/` every time the site is built.
+
+{{< include _partials/_backtest-tables.qmd >}}
+
+* The ensemble's CRPS is `{python} facts["crps_gain"]` lower than the 2023 model's, and it scored better in
+  `{python} facts["n_better"]` of `{python} facts["n_cases"]` cases. The 2023 model was better in
+  `{python} facts["legacy_wins"]`.
+* The biggest gain is calibration. The 2023 model's 90% intervals held `{python} facts["legacy_cov90"]` of
+  results, against `{python} facts["ensemble_cov90"]` for the ensemble: its fixed sample size and very smooth
+  random walk made it overconfident.
+* On the bloc-lead question the 2023 model's Brier score was `{python} facts["legacy_brier"]`, against
+  `{python} facts["ensemble_brier"]` for the ensemble. It was confidently right in all three elections, partly
+  because its smooth path barely reacted to Labour's surge after Jacinda Ardern became leader in 2017. Three
+  elections cannot separate that from luck.
+* The Gaussian variants beat the Dirichlet-multinomial one, which stacking all but ignores. The Gaussian and
+  heavy-tailed variants are too close for three elections to rank.
+
+### Fundamentals prior
+
+Forecasting `{python} probe["target"]` `{python} probe["weeks"]` weeks out, the Gaussian variant scored a CRPS of
+`{python} probe["crps_without"]` points without the fundamentals prior and `{python} probe["crps_with"]` with it.
+The prior moved `{python} probe["pm"]` to `{python} probe["pm_with"]`, against `{python} probe["pm_without"]`
+without it; `{python} probe["pm"]` won `{python} probe["pm_result"]`. The prior is anchored on the Prime
+Minister's party's previous result, which in 2020 was a landslide. It is excluded from the ensemble.
+
+## Limitations
+
+* **Three elections.** Twelve cases sound like more than they are: forecasts of the same election at different
+  horizons share its surprises. Differences of a few percent in CRPS between variants are not meaningful.
+* **Electorates are not tested.** The bloc-lead score uses the electorates each party actually won, so it tests
+  the vote forecast only. The {{< var election.year >}} electorate assumptions in `config/electorates.yml` are
+  editorial.
+* **Publication delays are approximate**, so a backtest may occasionally include a poll a day or two before it
+  was published, or exclude one after.
+* **Single-poll pollsters are dropped** (`min_polls: 2`), for example Anacta in 2026.
+
+The backtests are rerun from GitHub Actions on request. How to run them yourself is in the
+[operations guide](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/operations.md), and the
+files they write are described in the
+[outputs guide](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/outputs.md).

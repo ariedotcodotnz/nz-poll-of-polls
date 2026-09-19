@@ -123,6 +123,54 @@ def test_balance_of_power_outcomes_are_exclusive():
     total = np.full(len(seats), 120)
     rows = balance_of_power(seats, parties, total, {"Right bloc": ["National", "ACT"]}, ["NZ First", "TOP"])
     r = rows[0]
-    assert r["p_alone"] == 0.2 and r["p_needs_all"] == 0.2 and r["p_short"] == 0.2
+    assert r["p_alone"] == 0.2 and r["p_needs_several"] == 0.2 and r["p_short"] == 0.2
+    assert r["p_needs_all"] == 0.2                          # with two pivots, needing several is needing both
     assert r["p_any_one"] == 0.4 and r["p_with"]["NZ First"] == 0.4 and r["p_with"]["TOP"] == 0.4
-    assert abs(r["p_alone"] + r["p_any_one"] + r["p_needs_all"] + r["p_short"] - 1) < 1e-12
+    assert abs(r["p_alone"] + r["p_any_one"] + r["p_needs_several"] + r["p_short"] - 1) < 1e-12
+
+
+def test_balance_of_power_does_not_call_every_pivot_necessary():
+    """Three pivots with 8, 6 and 0 seats: the first two together are enough, so the third is not needed."""
+    from pollofpolls.forecast.coalitions import balance_of_power
+    parties = ["National", "ACT", "NZ First", "TOP", "Opportunity", "Labour", "Other"]
+    seats = np.array([[45, 5, 8, 6, 0, 56, 0]])
+    rows = balance_of_power(seats, parties, np.array([120]), {"Right bloc": ["National", "ACT"]},
+                            ["NZ First", "TOP", "Opportunity"])
+    r = rows[0]
+    assert r["p_alone"] == 0 and r["p_any_one"] == 0 and r["p_short"] == 0
+    assert r["p_needs_several"] == 1 and r["p_needs_all"] == 0
+
+
+def test_backtest_cases_are_rescored_when_the_blocs_change(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    import pytest
+
+    from pollofpolls.eval import backtest as bt
+    parties = ["National", "Labour", "Green", "ACT", "NZ First", "Other"]
+    outcome = {"National": 0.38, "Labour": 0.32, "Green": 0.07, "ACT": 0.01, "NZ First": 0.08, "Other": 0.14}
+    electorates = {2017: {"National": 41, "Labour": 29, "ACT": 1}}
+    record = {"target": 2017, "horizon_weeks": 4, "variant": "base", "parties": parties, "outcome": outcome,
+              "blocs": {"right": ["National", "ACT"], "left": ["Labour", "Green"]},
+              "p_right_bloc_ahead": 0.9, "right_bloc_ahead": True, "brier_bloc": 0.01}
+    new = {"right": ["National", "ACT"], "left": ["Labour", "Green", "NZ First"]}
+    cfg = SimpleNamespace(model_cfg={"backtest": {"blocs": {2017: new}}})
+    (tmp_path / "cases").mkdir()
+    (tmp_path / "fits").mkdir()
+    # unchanged blocs: the cached scores stand and nothing is read
+    same = SimpleNamespace(model_cfg={"backtest": {"blocs": {2017: record["blocs"]}}})
+    assert bt.rescore_blocs(same, tmp_path, record, electorates) is record
+    # changed blocs without a cached fit: refuse rather than mix two events
+    with pytest.raises(RuntimeError, match="base_2017_h4"):
+        bt.rescore_blocs(cfg, tmp_path, record, electorates)
+    # changed blocs with the fit: rescored from its draws with the new event, and the case file updated
+    draws = np.tile([outcome[p] for p in parties], (50, 1))
+    (tmp_path / "fits" / "base_2017_h4.npz").write_bytes(b"")
+    monkeypatch.setattr(bt.FitResult, "load", classmethod(lambda cls, prefix: SimpleNamespace(pi_target=draws)))
+    got = bt.rescore_blocs(cfg, tmp_path, record, electorates)
+    want_p, want_actual = bt.bloc_probability(draws, parties, (new["right"], new["left"]), electorates[2017],
+                                              np.array([outcome[p] for p in parties]))
+    assert got["blocs"] == new and got["right_bloc_ahead"] is want_actual is False
+    assert got["p_right_bloc_ahead"] == want_p and got["brier_bloc"] == bt.brier(want_p, want_actual)
+    assert json.loads((tmp_path / "cases" / "base_2017_h4.json").read_text())["blocs"] == new

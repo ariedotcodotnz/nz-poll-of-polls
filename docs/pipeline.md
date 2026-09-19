@@ -51,7 +51,7 @@ file is missing or does not cover every candidate in `ensemble`, all candidates 
 Mixes the fitted variants with their stacking weights and simulates election-day and "held now" outcomes:
 4,000 draws of vote shares, electorate wins from `config/electorates.yml`, Sainte-Laguë seat allocation and
 the coalition table. The weekly trend and the seat simulation use the same weighted mixture. If
-`forecast.calibrate_spread` is on, the spread is rescaled first (see [Evaluation](evaluation.md)).
+`forecast.calibrate_spread` is on, the spread is rescaled first (see [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html)).
 
 | Option | Effect |
 |---|---|
@@ -59,9 +59,12 @@ the coalition table. The weekly trend and the seat simulation use the same weigh
 
 ## report
 
-Draws the static SVG charts under the file names the 2023 pipeline used, renders `site/index.html` with
-interactive Plotly charts, and copies the CSV, JSON and SVG outputs into `site/`. Chart data is embedded as
-HTML-safe JSON, so text from Wikipedia cannot inject script into the page.
+Builds the website with [Quarto](https://quarto.org) from `website/` into `site/`, which is cleared first.
+Before rendering, it writes the election's year and date for the pages and draws the static SVG charts,
+including those under the file names the 2023 pipeline used. Quarto then runs each page's Python cells, which
+read `output/`: the forecast page with interactive Plotly charts, and the two pages on method. Afterwards the
+CSV, JSON and SVG outputs are copied into `site/`. Text from Wikipedia is escaped before it reaches a page, so
+it cannot inject script or run a Quarto shortcode. Needs Quarto 1.10 or newer.
 
 ## backtest
 
@@ -76,7 +79,8 @@ results. Each case is a variant, a target election and a horizon.
 | `--no-aggregate` | only fit cases; useful when running targets in parallel |
 
 To use several machines or processes, run one target per process with `--no-aggregate`, then run
-`pollofpolls backtest --no-run` once. See [Evaluation](evaluation.md) for what the aggregation computes.
+`pollofpolls backtest --no-run` once. See [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html) for what the aggregation computes. A case scored with
+other blocs than the current `backtest.blocs` is rescored from its cached fit; if the fit is gone, rerun it.
 
 ## Caching
 

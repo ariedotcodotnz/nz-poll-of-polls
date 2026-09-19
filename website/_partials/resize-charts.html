@@ -1,0 +1,8 @@
+<script>
+// Plotly sizes a chart when it is drawn, so a chart drawn in a hidden tab or collapsed callout comes out the wrong
+// size. Quarto announces a shown tab with "slideenter" and Bootstrap an opened callout with "shown.bs.collapse";
+// a window resize makes Plotly measure again.
+["slideenter", "shown.bs.collapse"].forEach(function (name) {
+  document.addEventListener(name, function () { window.dispatchEvent(new Event("resize")); });
+});
+</script>

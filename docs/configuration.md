@@ -20,7 +20,7 @@ or `OPP`, are mapped to these names in `src/pollofpolls/data/parties.py`.
 | `in_parliament` | map of year to parties | parties always tracked in the term ending in that year |
 | `auto_track` | `{min_share, min_polls}` | also track a party with at least `min_share` in at least `min_polls` polls of the term |
 | `parliament_2026` | map | seats at dissolution; documentation only |
-| `colours` | map of party to hex colour | chart colours; unlisted parties are grey |
+| `colours` | map of party to hex colour | chart colours; unlisted parties are grey. The defaults keep each party's usual hue but are re-stepped so every pair stays distinguishable on one chart, including for colour-blind readers. Check any change with a palette validator before using it. |
 
 Each entry of `elections`:
 
@@ -81,10 +81,10 @@ combinations with TOP on either side, because TOP calls itself centrist and may 
 | Key | Meaning |
 |---|---|
 | `blocs` | map of bloc name to its core parties, by default National + ACT and Labour + Green + Te Pāti Māori |
-| `pivots` | parties that could support either bloc, by default NZ First and TOP |
+| `pivots` | parties that could support either bloc, by default NZ First and TOP; any number |
 
-For each bloc the report gives the chance of a majority alone, with each pivot party on its own, only with
-all pivots together, or not even then.
+For each bloc the website gives the chance of a majority alone, with each pivot party on its own, only with
+two or more pivots together (with two pivots, both), or not even then.
 
 ## model.yml
 
@@ -104,7 +104,7 @@ all pivots together, or not even then.
 
 | Key | Meaning |
 |---|---|
-| `ensemble` | candidate variants for the published forecast, weighted by stacking; see [Evaluation](evaluation.md) |
+| `ensemble` | candidate variants for the published forecast, weighted by stacking; see [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html) |
 | `mcmc` | `chains`, `warmup`, `samples`, `max_tree_depth`, `target_accept` and `seed` for live fits |
 | `priors` | prior scales; see the table below |
 | `election_obs_sd` | log-ratio noise on election results, used only by the Kalman variant |
@@ -112,7 +112,7 @@ all pivots together, or not even then.
 | `backtest.blocs` | per target election, the `right` and `left` parties compared by the bloc-lead Brier score; others default to National + ACT against Labour + Green |
 | `backtest.mcmc` | MCMC settings that override `mcmc` in backtests |
 | `seats.n_sims` | number of simulated elections |
-| `forecast.calibrate_spread` | apply the backtest-fitted spread calibration; off, see [Evaluation](evaluation.md) |
+| `forecast.calibrate_spread` | apply the backtest-fitted spread calibration; off, see [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html) |
 
 Priors:
 

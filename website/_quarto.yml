@@ -1,0 +1,54 @@
+# The public website: the forecast and how it is made. `pollofpolls report` renders it into site/, which
+# GitHub Actions publishes to GitHub Pages; `quarto preview website` shows it while editing. Developer
+# documentation stays in docs/ and is not published here.
+project:
+  type: website
+  output-dir: ../site
+  render:
+    - index.qmd
+    - model.qmd
+    - evaluation.qmd
+  pre-render: _scripts/pre-render.py     # _variables.yml from config, and the static SVG charts
+  post-render: _scripts/post-render.py   # copies the CSV, JSON and SVG downloads into site/
+
+website:
+  title: "NZ Poll of Polls"
+  description: "Bayesian poll aggregation and seat forecast for the New Zealand general election"
+  site-url: "https://ariedotcodotnz.github.io/nz-poll-of-polls/"
+  open-graph: true
+  search: false
+  navbar:
+    left:
+      - href: index.qmd
+        text: Forecast
+      - href: model.qmd
+        text: How the model works
+      - href: evaluation.qmd
+        text: How it is tested
+    right:
+      - icon: github
+        href: "https://github.com/ariedotcodotnz/nz-poll-of-polls"
+        aria-label: "Source code on GitHub"
+  page-footer:
+    left: "Polls from Wikipedia. Builds on Peter Ellis's 2017 and 2020 model and the NZ Herald 2023 Poll of Polls."
+    right: "[Source code](https://github.com/ariedotcodotnz/nz-poll-of-polls) (GPL-3)"
+
+format:
+  html:
+    theme:
+      light: [sandstone, _styles/theme.scss, _styles/light.scss]
+      dark: [darkly, _styles/theme.scss, _styles/dark.scss]
+    respect-user-color-scheme: true
+    toc: true
+    toc-depth: 3
+    html-math-method: katex
+    anchor-sections: true
+    smooth-scroll: true
+    include-in-header: _partials/fonts.html
+    include-after-body: _partials/resize-charts.html
+
+execute:
+  echo: false
+  warning: false
+
+lang: en

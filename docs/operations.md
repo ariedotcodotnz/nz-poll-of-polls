@@ -7,12 +7,14 @@
 
 | Job | Runs | Does |
 |---|---|---|
-| `test` | always | installs the package and runs the test suite |
+| `test` | always | installs the package and Quarto, and runs the test suite, including a build of the website |
 | `backtest-plan` | only on demand, with "Re-run the rolling-origin backtests" ticked | reads the backtest elections from `config/model.yml` |
 | `backtest` | after `backtest-plan` | one job per election, in parallel. Each starts from an empty `output/backtest/` and uploads only its own election's cases and fits. |
 | `backtest-aggregate` | after `backtest` | checks every configured election arrived, scores all cases, refits the stacking weights and commits `output/backtest/` |
-| `run` | after `test`, and after `backtest-aggregate` when that ran | fetch, prep, fit, forecast and report; commits `output/*.csv` and `output/*.json`; uploads `site/` |
+| `run` | after `test`, and after `backtest-aggregate` when that ran | fetch, prep, fit, forecast and report (Quarto builds the website); commits `output/*.csv` and `output/*.json`; uploads `site/` |
 | `deploy` | after `run` | publishes `site/` to GitHub Pages |
+
+The Quarto version is pinned by `QUARTO_VERSION` at the top of the workflow.
 
 Fits are cached between runs with `actions/cache`, keyed on the package source and `config/`. A fit is reused
 only if its fingerprint matches, so a run with no new polls finishes quickly.
@@ -21,7 +23,7 @@ The bot's commits are pushed with the workflow's own token, which does not trigg
 
 ### Publishing
 
-Pages is enabled with Settings > Pages > Source set to "GitHub Actions", and the report is published at
+Pages is enabled with Settings > Pages > Source set to "GitHub Actions", and the website is published at
 <https://ariedotcodotnz.github.io/nz-poll-of-polls/>. A fork needs the same setting, and its site appears at
 `https://<owner>.github.io/<repository>/`. No secrets are needed.
 
@@ -33,6 +35,25 @@ skipped. Every run replaces the published site, so the page always matches the l
 Open Actions > Poll of Polls > Run workflow, tick the backtest box and run. The three election jobs take about an
 hour or two each on hosted runners. The new stacking weights are committed first, and the `run` job that follows
 uses them. Re-run the backtests after any change to the model code or priors; the weekly runs do not.
+
+To run them on your own machine:
+
+```bash
+pollofpolls backtest                 # all variants, targets and horizons in config/model.yml
+pollofpolls backtest --no-run        # rescore cached cases, refit weights, rewrite the tables
+```
+
+A full run takes one to two hours on 8 cores. To use several processes, start one target per process and
+aggregate at the end:
+
+```bash
+for y in 2017 2020 2023; do pollofpolls backtest --targets $y --no-aggregate & done; wait
+pollofpolls backtest --no-run
+```
+
+Results are written to `output/backtest/`; see [Outputs](outputs.md#outputbacktest-committed). After a change to
+`backtest.blocs`, `--no-run` rescores every case from its cached fit in `output/backtest/fits/`, so run it where
+those fits are, or rerun the cases.
 
 ## During the campaign
 
@@ -61,7 +82,9 @@ After the 2026 results are official:
 4. **Backtests.** Add 2026 to `backtest.targets` in `config/model.yml` and its seat blocs to `backtest.blocs`,
    then re-run the backtests to refresh the stacking weights. The GitHub Actions workflow reads the same list, so
    it starts a job for 2026 and checks that its results arrive.
-5. **Tests.** Add a fixture of the new polling table to `tests/fixtures/`, add the new page year to the `YEARS`
+5. **Website text.** "How it is tested" (`website/evaluation.qmd`) quotes its numbers from the results, but
+   some sentences describe the backtest elections in words; reread them after the backtests change.
+6. **Tests.** Add a fixture of the new polling table to `tests/fixtures/`, add the new page year to the `YEARS`
    lists in the tests, and update the result rows expected from the 2026 page in
    `test_every_page_parses_with_election_rows`.
 

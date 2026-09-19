@@ -1,0 +1,6 @@
+/*-- scss:defaults --*/
+$font-family-sans-serif: "Source Sans 3", "Source Sans Pro", -apple-system, "Segoe UI", Roboto, sans-serif;
+
+/*-- scss:rules --*/
+// the charts keep their light background, so they sit on the dark page as cards
+.js-plotly-plot .main-svg { border-radius: 6px; }

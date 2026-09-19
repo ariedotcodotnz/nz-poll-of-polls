@@ -1,0 +1,192 @@
+---
+title: "NZ Poll of Polls {{< var election.year >}}"
+subtitle: "Poll aggregation and seat forecast for the New Zealand general election on {{< var election.date >}}"
+---
+
+{{< include _partials/_setup.qmd >}}
+
+```{python}
+#| output: asis
+print(site.intro())
+```
+
+## Election-day forecast
+
+```{python}
+#| output: asis
+print(site.tiles())
+```
+
+### Who holds the balance of power
+
+The chance of each outcome on election day. A pivot party's column is the chance that it alone would give the bloc
+a majority; when either would, both columns count it.
+
+```{python}
+#| output: asis
+print(site.balance_table())
+print(site.house_size())
+```
+
+### Parties
+
+```{python}
+#| output: asis
+print(site.party_table())
+```
+
+## Voting intention
+
+### All parties
+
+Estimated support for every party on one scale. Hover to read every party in a week; click a party in the legend
+to hide it, or double-click to show it alone. The dotted section is the projection to election day. The numbers
+are in [trend.csv](trend.csv).
+
+```{python}
+#| classes: wide-only
+show(site.figure("all"))
+```
+
+```{python}
+#| classes: narrow-only
+show(site.figure("all", narrow=True))
+```
+
+### Each party, with its polls
+
+Points are individual polls. The line is the model's estimate of underlying support after removing house
+effects, and the bands are 50% and 90% credible intervals.
+
+::: {.panel-tabset}
+
+#### This term
+
+```{python}
+#| classes: wide-only
+show(site.figure("trend"))
+```
+
+```{python}
+#| classes: narrow-only
+show(site.figure("trend", narrow=True))
+```
+
+#### Since {{< var anchor.year >}}
+
+```{python}
+#| classes: wide-only
+show(site.figure("trend_full"))
+```
+
+```{python}
+#| classes: narrow-only
+show(site.figure("trend_full", narrow=True))
+```
+
+:::
+
+## Seats
+
+The chance of each number of seats for each coalition, from `{python} site.n_simulations` simulated elections.
+The vertical line is a majority.
+
+::: {.panel-tabset}
+
+#### On election day
+
+```{python}
+#| classes: wide-only
+show(site.figure("seats_election"))
+```
+
+```{python}
+#| classes: narrow-only
+show(site.figure("seats_election", narrow=True))
+```
+
+#### If the election were held now
+
+```{python}
+#| classes: wide-only
+show(site.figure("seats_now"))
+```
+
+```{python}
+#| classes: narrow-only
+show(site.figure("seats_now", narrow=True))
+```
+
+:::
+
+```{python}
+#| output: asis
+print(site.coalition_table())
+```
+
+::: {.callout-note appearance="simple"}
+Electorate seats for parties under the 5% threshold (ACT in Epsom, Te Pāti Māori in the Māori electorates, and
+independents) are simulated from editorial assumptions in
+[`config/electorates.yml`](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/config/electorates.yml),
+not from polls.
+:::
+
+## House effects
+
+The average difference between each pollster's published numbers and the model's estimate of true support, in
+percentage points, at current support levels. Positive means the pollster tends to report a higher number.
+
+```{python}
+if site.house is not None:
+    show(site.figure("house"))
+```
+
+```{python}
+#| output: asis
+if site.house is None:
+    print("No pollster has published enough polls this term to estimate its house effect.")
+```
+
+## How well has the model done in the past? {#track-record}
+
+```{python}
+#| include: false
+design = site.design_facts()
+```
+
+Each model was refitted using only the polls published `{python} design["horizons"]` weeks before the
+`{python} design["targets"]` elections, and scored against the result. CRPS is the average error of the whole
+forecast distribution in percentage points; lower is better. The 90% coverage should be close to 0.9.
+[How the model is tested](evaluation.qmd).
+
+{{< include _partials/_backtest-tables.qmd >}}
+
+## Recent polls
+
+```{python}
+#| output: asis
+print(site.recent_polls_table())
+```
+
+## Data
+
+The numbers behind this page, regenerated with every run. The columns are described in the
+[outputs documentation](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/outputs.md).
+
+```{python}
+#| output: asis
+print(site.downloads())
+```
+
+## About the model
+
+Weekly support for `{python} len(site.parties) - 1` parties and "Other" follows a correlated random walk, pinned
+to the official results of the `{python} site.cfg.anchor_election`–`{python} site.last_result_year` elections.
+Each poll is read through its pollster's house effect and an industry-wide polling error. The
+{{< var election.year >}} election-day error cannot be seen yet, so it is drawn from past elections. Variants are
+combined with weights from backtests, and seats follow the MMP rules. [How the model works](model.qmd).
+
+```{python}
+#| output: asis
+print(site.diagnostics())
+```

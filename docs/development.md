@@ -19,10 +19,45 @@
 | `model/fit.py` | running NUTS, diagnostics, saving and loading fits |
 | `forecast/seats.py`, `forecast/simulate.py`, `forecast/coalitions.py` | seat allocation, electorate simulation, coalition tables |
 | `eval/scoring.py`, `eval/backtest.py`, `eval/calibration.py` | scores, backtests and stacking, spread calibration |
-| `report/charts.py`, `report/render.py`, `templates/report.html` | charts and the HTML report |
+| `report/charts.py` | the static SVG and interactive Plotly charts |
+| `report/site.py` | what the website's pages compute: tables, figures and quoted numbers, with Wikipedia text escaped |
+| `report/render.py` | builds the website: the steps before and after Quarto renders, and the Quarto run |
 
 Conventions: vote shares are proportions; the first tracked party is National, the log-ratio reference, and the
 last is "Other"; weeks start on Sunday; everything that could change between elections is in `config/`.
+
+## The website
+
+The public website is a [Quarto](https://quarto.org) project in `website/`, rendered into `site/`. It has the
+forecast and the two pages on method. This developer documentation stays in `docs/` and is not published.
+
+| Path | Role |
+|---|---|
+| `_quarto.yml` | the site: its pages, navbar, footer, theme, maths, and the scripts run before and after rendering |
+| `index.qmd` | the forecast |
+| `model.qmd`, `evaluation.qmd` | "How the model works" and "How it is tested" |
+| `_partials/_setup.qmd` | included by every page: loads the outputs into `site` for the page's Python cells |
+| `_partials/_backtest-tables.qmd` | the backtest tables, included by the forecast page and "How it is tested" |
+| `_partials/fonts.html`, `resize-charts.html` | the web fonts, and a script that redraws a chart when its tab opens |
+| `_scripts/pre-render.py` | writes `_variables.yml` (the election's year and date) and draws the static SVG charts |
+| `_scripts/post-render.py` | copies the CSV, JSON and SVG downloads into `site/` |
+| `_styles/` | the theme: Sandstone and Darkly with the 2023 site's fonts, plus tiles, tables and chart layout |
+
+`quarto preview website` renders the site and reloads it as you edit. Run it with the project's environment
+active, or with `QUARTO_PYTHON` pointing at its Python, because the pages' Python cells import `pollofpolls`.
+`pollofpolls report` renders once with that environment set.
+
+The pages get their numbers from `pollofpolls.report.site.Site`, which returns Markdown tables and Plotly
+figures. Two rules keep the pages safe and current:
+
+* **Escape anything from Wikipedia.** Quarto reads computed Markdown as Markdown, raw HTML and shortcodes, so a
+  pollster named `<script>...` or `{{< env ... >}}` would otherwise run. Build tables with `table()`, pass every
+  text cell through `esc()`, and keep inline values (`` `{python} ...` ``) to numbers and text written here.
+* **Quote results; don't type them.** Numbers in the text come from inline Python or from `{{< var ... >}}`,
+  so the pages stay right after every run and every election rollover.
+
+To add a page, create `website/<name>.qmd` with a `title`, include `_partials/_setup.qmd` if it needs data, and
+list the page under `project.render` and in the navbar in `_quarto.yml`.
 
 ## Tests
 
@@ -38,9 +73,10 @@ pytest -q -k "not recovers_path"   # skip the slow model smoke tests
 | `test_seats.py` | seat allocation against the official 2011–2023 outcomes |
 | `test_kalman.py` | the Kalman likelihood and smoother against brute-force Gaussian integration |
 | `test_scoring.py` | CRPS, energy score, mixture CRPS, stacking, the bridge sampler |
-| `test_fixes.py` | regression tests: transition density, fit persistence, source fingerprints, electorate probabilities |
+| `test_fixes.py` | regression tests: transition density, fit persistence, source fingerprints, electorate probabilities, balance-of-power classes, backtest bloc rescoring |
 | `test_model_smoke.py` | every variant recovers a known path from simulated polls |
-| `test_pipeline_e2e.py` | prep, forecast and report on the fixtures, including a hostile pollster name that must not inject script |
+| `test_site.py` | the website's building blocks: escaping, tables, rendering older summaries; chart label spacing |
+| `test_pipeline_e2e.py` | prep, forecast and the whole Quarto website on the fixtures (skipped without Quarto), including a hostile pollster name that must neither inject script nor run a shortcode, and links between pages |
 
 Tests make no network calls. The fixtures in `tests/fixtures/` hold only each page's party-vote table.
 
@@ -74,4 +110,7 @@ export XLA_FLAGS="--xla_force_host_platform_device_count=4 --xla_cpu_multi_threa
 | A column is missing from `polls.parquet` | the table was written by an older version; run `pollofpolls prep` |
 | Fits rerun every time | the data changed, which is expected when there are new polls, or a model source file changed |
 | Only one chain runs at a time | `XLA_FLAGS` was set without `--xla_force_host_platform_device_count` |
-| Charts are blank in the report | Plotly could not load from the CDN; check the internet connection |
+| Charts are blank on the website | Plotly could not load from its CDN; check the internet connection |
+| `pollofpolls report` says Quarto is needed | install Quarto 1.10 or newer from <https://quarto.org/docs/get-started/> |
+| `quarto preview` fails with `No module named 'pollofpolls'` | activate the project's environment first, or set `QUARTO_PYTHON` to its Python |
+| Quarto renders nothing and reports no error | the project is inside a hidden directory (a path segment starting with `.`), which Quarto skips |

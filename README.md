@@ -18,20 +18,23 @@ pollofpolls fetch         # cache the Wikipedia polling pages for 2011-2026
 pollofpolls prep          # parse polls; verify election results against data/reference
 pollofpolls fit           # NUTS fits of the ensemble variants (cached by input fingerprint)
 pollofpolls forecast      # stacked ensemble -> seats, coalitions, output/*.csv and summary.json
-pollofpolls report        # output/*.svg charts and site/index.html
+pollofpolls report        # the website, built with Quarto from website/ into site/
 pollofpolls backtest      # rolling-origin backtests on 2017/2020/2023 -> stacking weights (slow)
 ```
 
 `pollofpolls all --quick` runs fetch to report with short MCMC chains for development. A full `fit`
-takes roughly 8-16 minutes per variant on 4 CPU cores. To view the report, run
-`python -m http.server 8000 --directory site` and open <http://localhost:8000>.
+takes roughly 8-16 minutes per variant on 4 CPU cores. Building the website needs
+[Quarto](https://quarto.org/docs/get-started/) 1.10 or newer; `quarto preview website` shows it with live
+reload while you edit.
 
 ## Documentation
 
-Full documentation is in [`docs/`](docs/README.md): [getting started](docs/getting-started.md),
-[pipeline](docs/pipeline.md), [model](docs/model.md), [evaluation](docs/evaluation.md),
-[configuration](docs/configuration.md), [data](docs/data.md), [outputs](docs/outputs.md),
-[operations](docs/operations.md) and [development](docs/development.md).
+The website at <https://ariedotcodotnz.github.io/nz-poll-of-polls/> has the forecast and two pages on method: [How the model works](https://ariedotcodotnz.github.io/nz-poll-of-polls/model.html) and [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html). It is a
+Quarto project in [`website/`](website/).
+
+Developer documentation is in [`docs/`](docs/README.md): [getting started](docs/getting-started.md),
+[pipeline](docs/pipeline.md), [configuration](docs/configuration.md), [data](docs/data.md),
+[outputs](docs/outputs.md), [operations](docs/operations.md) and [development](docs/development.md).
 
 ## The model
 
@@ -177,9 +180,8 @@ and stacking evaluated out of sample.
 
 `output/summary.json`, `forecast.csv`, `seats.csv`, `coalitions.csv`, `trend.csv` and `house_effects.csv`.
 Also the SVG charts under the file names the 2023 pipeline used (`voting_intention620.svg`,
-`election_night375.svg`, ...), the backtest tables in `output/backtest/`, and the report at
-`site/index.html`. The GitHub Actions workflow refreshes everything weekly and on every push, and publishes
-the report to GitHub Pages; set Settings > Pages > Source to "GitHub Actions". Backtests run only when
+`election_night375.svg`, ...), the backtest tables in `output/backtest/`, and the website in `site/`. The
+GitHub Actions workflow refreshes everything weekly and on every push, and publishes the website to GitHub Pages; set Settings > Pages > Source to "GitHub Actions". Backtests run only when
 triggered manually from the Actions tab, as three parallel jobs.
 
 ## License

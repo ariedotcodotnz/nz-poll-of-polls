@@ -40,9 +40,12 @@ def balance_of_power(seats: np.ndarray, parties: list[str], total_seats: np.ndar
                      blocs: dict[str, list[str]], pivots: list[str]) -> list[dict]:
     """Who holds the balance of power, per simulation, for each bloc.
 
-    For each bloc the outcomes are exclusive and sum to one: a majority alone; short alone but a majority with
-    at least one pivot party on its own (``p_with`` gives each pivot's chance of being enough); a majority only
-    with every pivot together; or short even with all of them.
+    For each bloc four outcomes are exclusive and sum to one: a majority alone (``p_alone``); short alone but a
+    majority with some single pivot party (``p_any_one``, with ``p_with`` giving each pivot's chance of being
+    enough on its own); a majority only with two or more pivots together (``p_needs_several``); or short even
+    with every pivot (``p_short``). ``p_needs_all`` is the chance that the bloc needs every pivot, so that
+    losing any one of them loses the majority. With two pivots it equals ``p_needs_several``; with more it
+    can be smaller.
     """
     idx = {p: i for i, p in enumerate(parties)}
     need = majority_threshold(total_seats)
@@ -57,12 +60,16 @@ def balance_of_power(seats: np.ndarray, parties: list[str], total_seats: np.ndar
         any_one = np.zeros(len(seats), dtype=bool)
         for v in enough.values():
             any_one |= v
-        needs_all = (~alone) & (~any_one) & (base + all_piv >= need)
+        needs_several = (~alone) & (~any_one) & (base + all_piv >= need)
+        needs_all = needs_several.copy()
+        for s in piv.values():
+            needs_all &= base + all_piv - s < need
         rows.append({
             "bloc": name, "parties": list(members), "pivots": list(pivots),
             "p_alone": float(alone.mean()),
             "p_with": {p: float(v.mean()) for p, v in enough.items()},
             "p_any_one": float(any_one.mean()),
+            "p_needs_several": float(needs_several.mean()),
             "p_needs_all": float(needs_all.mean()),
             "p_short": float((base + all_piv < need).mean()),
         })

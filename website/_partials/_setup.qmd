@@ -1,0 +1,7 @@
+```{python}
+#| include: false
+# Shared by every page: one Site loads the pipeline's outputs (output/) for the page's cells.
+from pollofpolls.report.site import Site, show
+
+site = Site()
+```

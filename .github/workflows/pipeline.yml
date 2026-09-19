@@ -27,6 +27,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.12"
+  QUARTO_VERSION: "1.10.18"   # builds the website in website/
 
 jobs:
   test:
@@ -38,6 +39,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - run: pip install -e ".[dev]"
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: ${{ env.QUARTO_VERSION }}
       - run: python -m pytest -q
 
   backtest-plan:
@@ -146,6 +150,9 @@ jobs:
       - run: pollofpolls prep
       - run: pollofpolls fit
       - run: pollofpolls forecast
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: ${{ env.QUARTO_VERSION }}
       - run: pollofpolls report
       - name: Commit forecast outputs
         run: |

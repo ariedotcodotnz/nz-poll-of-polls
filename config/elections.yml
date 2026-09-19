@@ -48,13 +48,17 @@ parliament_2026:
   Te Pāti Māori: 4
   Independent: 2
 
+# Chart colours. Each keeps the party's usual hue family, re-stepped so every pair stays distinguishable in one
+# chart, including for colour-blind readers: validated with the dataviz palette checker (OKLab colour difference
+# of at least 15 for normal vision and 10 under protanopia and deuteranopia, all pairs). NZ First's black and
+# Other's grey are deliberate neutrals. Check any change with the same validator before using it.
 colours:
-  National: "#065BAA"
-  Labour: "#d82c20"
-  Green: "#00491E"
-  ACT: "#ffd100"
-  NZ First: "#212529"
-  Te Pāti Māori: "#D12C38"
-  TOP: "#09B598"
+  National: "#1F5FBF"
+  Labour: "#D8342A"
+  Green: "#44CA89"
+  ACT: "#D9A300"
+  NZ First: "#1F2328"
+  Te Pāti Māori: "#8E2F6B"
+  TOP: "#079EC4"
   New Conservative: "#00AEEF"
-  Other: "#B3B3B3"
+  Other: "#CDD1D5"
