@@ -16,7 +16,7 @@ Everything the website shows, in one file.
 | `variants`, `weights` | ensemble members and their weights |
 | `spread_calibration` | calibration parameters, or `null` when off |
 | `fundamentals_prior`, `fundamentals_ess` | the estimated prior on the PM party's swing (reported, not used) |
-| `n_polls_cycle`, `n_polls_total`, `latest_poll`, `pollsters_cycle` | the data behind the forecast |
+| `n_polls_cycle`, `n_polls_total`, `latest_poll`, `pollsters_cycle` | the data behind the forecast; `latest_poll` is null until the term's first poll |
 | `parties` | tracked parties in order; National first, Other last |
 | `election_day`, `now` | per party: `mean`, quantiles and `p_over_5pct` |
 | `seats_election_day` | per party: seat mean and quantiles, and `p_any_seats` |

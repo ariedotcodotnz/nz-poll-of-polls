@@ -78,27 +78,6 @@ def swatch(colour: str | None) -> str:
     return f'[]{{.swatch style="background-color:{colour}" aria-hidden="true"}}'
 
 
-_plotly_loaded = False
-
-
-def show(fig) -> None:
-    """Display a Plotly figure in a page, without the toolbar and resizing with the page.
-
-    Plotly's notebook renderer would load plotly.js (through require.js) and MathJax again for every figure; here
-    the page loads plotly.js once, before its first figure, at the version this Plotly package writes for.
-    """
-    import plotly.offline
-    from IPython.display import HTML, display
-
-    global _plotly_loaded
-    html = fig.to_html(full_html=False, include_plotlyjs=False, include_mathjax=False, config=PLOTLY_CONFIG)
-    if not _plotly_loaded:
-        src = f"https://cdn.plot.ly/plotly-{plotly.offline.get_plotlyjs_version()}.min.js"
-        html = f'<script src="{src}" charset="utf-8"></script>\n{html}'
-        _plotly_loaded = True
-    display(HTML(html))
-
-
 class Site:
     """The pipeline's outputs as the pieces the pages show. Data is loaded when a page first asks for it."""
 
@@ -108,6 +87,7 @@ class Site:
         self.election = self.cfg.forecast_election
         self.colours = self.cfg.colours
         self.today = today or date.today()
+        self._plotly_loaded = False
 
     # ------------------------------------------------------------------------------------------------- data
     @cached_property
@@ -183,9 +163,13 @@ class Site:
     # ---------------------------------------------------------------------------------------- forecast page
     def intro(self) -> str:
         s = self.summary
-        return (f"{self.days_to_election} days to go. {s['n_polls_cycle']} polls this term from "
-                f"{len(s['pollsters_cycle'])} pollsters; the latest was taken {long_date(s['latest_poll'])}. "
-                f"Updated {long_date(s['generated_at'][:10])}.\n")
+        latest = s.get("latest_poll")
+        if not s.get("n_polls_cycle") or latest in (None, "", "None"):     # "None": written before 2026-09-19
+            polls = "No polls have been published this term yet."
+        else:
+            polls = (f"{s['n_polls_cycle']} polls this term from {len(s['pollsters_cycle'])} pollsters; the latest "
+                     f"was taken {long_date(latest)}.")
+        return f"{self.days_to_election} days to go. {polls} Updated {long_date(s['generated_at'][:10])}.\n"
 
     def tiles(self) -> str:
         """One tile per coalition: its chance of a majority on election day, and its seats."""
@@ -265,6 +249,30 @@ class Site:
         return "Model diagnostics: " + "; ".join(parts) + ".\n" if parts else ""
 
     # -------------------------------------------------------------------------------------------- figures
+    def show(self, name: str, narrow: bool = False) -> None:
+        """Display a page figure (see `figure_html`)."""
+        from IPython.display import HTML, display
+
+        display(HTML(self.figure_html(name, narrow)))
+
+    def figure_html(self, name: str, narrow: bool = False) -> str:
+        """A page figure as HTML, without the toolbar and resizing with the page.
+
+        Plotly's notebook renderer would load plotly.js (through require.js) and MathJax again for every figure.
+        Instead the first figure of a page loads plotly.js, at the version this Plotly package writes for. That
+        state belongs to the Site, which each run of a page makes afresh: Quarto's execution daemon keeps this
+        module loaded from one render to the next.
+        """
+        import plotly.offline
+
+        html = self.figure(name, narrow).to_html(full_html=False, include_plotlyjs=False, include_mathjax=False,
+                                                 config=PLOTLY_CONFIG)
+        if not self._plotly_loaded:
+            src = f"https://cdn.plot.ly/plotly-{plotly.offline.get_plotlyjs_version()}.min.js"
+            html = f'<script src="{src}" charset="utf-8"></script>\n{html}'
+            self._plotly_loaded = True
+        return html
+
     def figure(self, name: str, narrow: bool = False):
         """A page figure: all, trend, trend_full, seats_election, seats_now or house. ``narrow`` gives the
         one-column version for phones."""
@@ -336,8 +344,8 @@ class Site:
             parts.append(f"The published ensemble beat the 2023 model on CRPS in {better} of {len(bt['h2h'])} "
                          "backtest cases.")
         if bt["stacking"].get("weights"):
-            parts.append(f"Stacking weights for {self.election.year}, fitted on all {len(bt['targets'])} past "
-                         f"elections: {self.weights_text(bt['stacking']['weights'])}.")
+            parts.append(f"Stacking weights for {self.election.year}, fitted on {bt['stacking'].get('n_cases', '–')} "
+                         f"backtest cases: {self.weights_text(bt['stacking']['weights'])}.")
         return " ".join(parts) + "\n" if parts else ""
 
     @staticmethod
@@ -352,7 +360,7 @@ class Site:
         if not bt:
             return {}
         by = {r["variant"]: r for r in bt["summary"]}
-        facts = {"n_targets": str(len(bt["targets"])), "n_cases": str(len(bt["h2h"]) or len(bt["targets"]) * len(bt["horizons"])),
+        facts = {"n_stacked": str(bt["stacking"].get("n_cases", "–")), "n_compared": str(len(bt["h2h"])),
                  "weights": self.weights_text(bt["stacking"].get("weights", {}), labels=False),
                  "loeo": "; ".join(f"{t}: {self.weights_text(w, labels=False)}"
                                    for t, w in bt["stacking"].get("loeo_weights", {}).items())}

@@ -45,12 +45,12 @@ are in [trend.csv](trend.csv).
 
 ```{python}
 #| classes: wide-only
-show(site.figure("all"))
+site.show("all")
 ```
 
 ```{python}
 #| classes: narrow-only
-show(site.figure("all", narrow=True))
+site.show("all", narrow=True)
 ```
 
 ### Each party, with its polls
@@ -64,24 +64,24 @@ effects, and the bands are 50% and 90% credible intervals.
 
 ```{python}
 #| classes: wide-only
-show(site.figure("trend"))
+site.show("trend")
 ```
 
 ```{python}
 #| classes: narrow-only
-show(site.figure("trend", narrow=True))
+site.show("trend", narrow=True)
 ```
 
 #### Since {{< var anchor.year >}}
 
 ```{python}
 #| classes: wide-only
-show(site.figure("trend_full"))
+site.show("trend_full")
 ```
 
 ```{python}
 #| classes: narrow-only
-show(site.figure("trend_full", narrow=True))
+site.show("trend_full", narrow=True)
 ```
 
 :::
@@ -97,24 +97,24 @@ The vertical line is a majority.
 
 ```{python}
 #| classes: wide-only
-show(site.figure("seats_election"))
+site.show("seats_election")
 ```
 
 ```{python}
 #| classes: narrow-only
-show(site.figure("seats_election", narrow=True))
+site.show("seats_election", narrow=True)
 ```
 
 #### If the election were held now
 
 ```{python}
 #| classes: wide-only
-show(site.figure("seats_now"))
+site.show("seats_now")
 ```
 
 ```{python}
 #| classes: narrow-only
-show(site.figure("seats_now", narrow=True))
+site.show("seats_now", narrow=True)
 ```
 
 :::
@@ -138,7 +138,7 @@ percentage points, at current support levels. Positive means the pollster tends 
 
 ```{python}
 if site.house is not None:
-    show(site.figure("house"))
+    site.show("house")
 ```
 
 ```{python}

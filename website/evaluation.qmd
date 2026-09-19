@@ -58,7 +58,7 @@ $$\text{CRPS}(w) = w^\top A - \tfrac{1}{2}\, w^\top B\, w, \qquad A_a = \mathbb{
 
 summed over parties and cases, and a small quadratic programme (SLSQP) finds its minimum.
 
-The weights used for {{< var election.year >}} are fitted on all `{python} facts["n_cases"]` cases:
+The weights used for {{< var election.year >}} are fitted on `{python} facts["n_stacked"]` backtest cases:
 `{python} facts["weights"]`.
 
 To score the ensemble honestly, each election is held out in turn and its weights are fitted on the other
@@ -84,7 +84,7 @@ These tables are rebuilt from `output/backtest/` every time the site is built.
 {{< include _partials/_backtest-tables.qmd >}}
 
 * The ensemble's CRPS is `{python} facts["crps_gain"]` lower than the 2023 model's, and it scored better in
-  `{python} facts["n_better"]` of `{python} facts["n_cases"]` cases. The 2023 model was better in
+  `{python} facts["n_better"]` of the `{python} facts["n_compared"]` cases where both were run. The 2023 model was better in
   `{python} facts["legacy_wins"]`.
 * The biggest gain is calibration. The 2023 model's 90% intervals held `{python} facts["legacy_cov90"]` of
   results, against `{python} facts["ensemble_cov90"]` for the ensemble: its fixed sample size and very smooth

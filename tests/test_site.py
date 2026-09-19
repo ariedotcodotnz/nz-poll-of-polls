@@ -5,6 +5,7 @@ import shutil
 from itertools import pairwise
 
 import numpy as np
+import polars as pl
 
 from pollofpolls.report.charts import spread_labels
 from pollofpolls.report.site import Site, and_join, esc, swatch, table
@@ -37,11 +38,14 @@ def _project(tmp_path, root, summary: dict, seats: np.ndarray, parties: list[str
     return Site(tmp_path)
 
 
+PARTIES = ["National", "Labour", "Green", "ACT", "NZ First", "Te Pāti Māori", "TOP", "Other"]
+SEATS = np.array([[55, 35, 10, 8, 7, 3, 2, 0], [45, 40, 13, 8, 7, 3, 4, 0]])
+
+
 def test_report_renders_summaries_from_before_the_balance_of_power(tmp_path, root):
     """A summary.json without balance_of_power, or with the older fields, is brought up to date from the seat
     simulations, so `pollofpolls report` works on outputs written by an earlier version."""
-    parties = ["National", "Labour", "Green", "ACT", "NZ First", "Te Pāti Māori", "TOP", "Other"]
-    seats = np.array([[55, 35, 10, 8, 7, 3, 2, 0], [45, 40, 13, 8, 7, 3, 4, 0]])
+    parties, seats = PARTIES, SEATS
     site = _project(tmp_path, root, {"kingmaker": {}}, seats, parties)
     rows = site.balance_rows()
     assert [r["bloc"] for r in rows] == ["Right bloc", "Left bloc"]
@@ -54,6 +58,44 @@ def test_report_renders_summaries_from_before_the_balance_of_power(tmp_path, roo
         del r["p_needs_several"]
     site = _project(tmp_path / "old", root, old, seats, parties)
     assert site.balance_rows()[0]["p_needs_several"] == 0.5          # recomputed, not the stale field
+
+
+def test_intro_before_the_first_poll_of_a_term(tmp_path, root):
+    """A new term has no polls: summary.json has latest_poll null (or "None", as older versions wrote it)."""
+    for i, latest in enumerate([None, "None"]):
+        summary = {"n_polls_cycle": 0, "pollsters_cycle": [], "latest_poll": latest,
+                   "generated_at": "2026-09-19T08:00:00+00:00"}
+        site = _project(tmp_path / f"case{i}", root, summary, SEATS, PARTIES)
+        assert "No polls have been published this term yet. Updated 19 September 2026." in site.intro()
+
+
+def test_plotly_is_loaded_once_per_page_run(root, monkeypatch):
+    """Quarto's execution daemon runs a page again in the same Python process; every run must load plotly.js."""
+    import plotly.graph_objects as go
+    monkeypatch.setattr(Site, "figure", lambda self, name, narrow=False: go.Figure(go.Scatter(x=[1], y=[1])))
+    for _ in range(2):
+        site = Site(root)                                   # what the page's setup cell does on each run
+        first, second = site.figure_html("all"), site.figure_html("trend")
+        assert first.count("cdn.plot.ly/plotly-") == 1 and "cdn.plot.ly" not in second
+        assert "Plotly.newPlot" in first and "Plotly.newPlot" in second
+
+
+def test_evaluation_counts_the_cases_behind_the_weights(tmp_path, root):
+    """A partial backtest (gauss for 2020 at 4 weeks and 2023 at 1 week) is two cases, not two targets times two
+    horizons; with no 2023-model runs there is nothing to compare against."""
+    site = _project(tmp_path, root, {}, SEATS, PARTIES)
+    bt = tmp_path / "output" / "backtest"
+    bt.mkdir()
+    pl.DataFrame({"variant": ["gauss"], "crps_pp": [1.5], "mae_pp": [2.0], "coverage_90": [0.9],
+                  "coverage_50": [0.5], "brier_bloc": [0.1], "n_cases": [2]}).write_csv(bt / "summary.csv")
+    pl.DataFrame({"variant": ["gauss", "gauss"], "horizon_weeks": [4, 1], "crps_pp": [1.6, 1.4],
+                  "coverage_90": [0.9, 0.9]}).write_csv(bt / "summary_by_horizon.csv")
+    pl.DataFrame({"target": [2020, 2023], "horizon_weeks": [4, 1], "variant": ["gauss", "gauss"]}) \
+        .write_csv(bt / "scores.csv")
+    (bt / "stacking.json").write_text(json.dumps({"weights": {"gauss": 1.0}, "loeo_weights": {}, "n_cases": 2}))
+    facts = site.backtest_facts()
+    assert facts["n_stacked"] == "2" and facts["n_compared"] == "0"
+    assert "fitted on 2 backtest cases" in site.backtest_verdict()
 
 
 def test_spread_labels_keeps_order_and_spacing():

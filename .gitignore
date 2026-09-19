@@ -13,6 +13,10 @@ data/raw/
 data/processed/
 *.nc
 
+# downloaded installers (Quarto comes from quarto-dev/quarto-actions in CI)
+quarto-*.tar.gz
+quarto-*.deb
+
 # rendered outputs (committed by CI only)
 site/
 website/.quarto/

@@ -256,7 +256,7 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
         "spread_calibration": spread,
         "fundamentals_prior": {"mean": ds.fund_mean, "sd": ds.fund_sd, "n_elections": ds.fund_n},
         "n_polls_cycle": int(latest["poll_id"].n_unique()), "n_polls_total": int(ds.N),
-        "latest_poll": str(latest["mid_date"].max()),
+        "latest_poll": d.isoformat() if (d := latest["mid_date"].max()) else None,   # null before the term's first poll
         "pollsters_cycle": sorted(latest["pollster"].unique().to_list()),
         "parties": ds.parties,
         "election_day": {r["party"]: r for r in share_rows(pi_target, "election_day")},
