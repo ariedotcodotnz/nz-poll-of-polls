@@ -61,3 +61,68 @@ def test_electorate_marginals_match_config_at_reference_share():
     # when the party does better, its chance rises and the independent's falls
     el2, ind2 = simulate_electorates(np.tile([0.5, 0.05, 0.45], (S, 1)), parties, cfg, np.random.default_rng(3))
     assert el2[:, 1].mean() > 0.5 and ind2.mean() < 0.35
+
+
+# ---------------------------------------------------------------------------------- second review round
+class _Resp:
+    def __init__(self, status, text="", headers=None, url=""):
+        self.status_code, self.text, self.headers, self.url = status, text, headers or {}, url
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(self.status_code)
+
+
+def test_fetch_only_reuses_validators_for_the_same_article(tmp_path, monkeypatch):
+    from pollofpolls.data import wikipedia
+    sent = []
+
+    def fake_get(url, headers, timeout):
+        sent.append((url, dict(headers)))
+        conditional = "If-None-Match" in headers or "If-Modified-Since" in headers
+        if conditional and url.endswith("2026_New_Zealand_general_election"):
+            return _Resp(304)
+        return _Resp(200, f"<html>{url}</html>", {"Last-Modified": "Mon, 01 Jan 2026 00:00:00 GMT"}, url)
+
+    monkeypatch.setattr(wikipedia.requests, "get", fake_get)
+    wikipedia.fetch_page(2026, tmp_path)                                   # first download
+    wikipedia.fetch_page(2026, tmp_path)                                   # same article: conditional, 304
+    assert "If-Modified-Since" in sent[1][1]
+    wikipedia.fetch_page(2026, tmp_path, page="Opinion polling for the next New Zealand general election")
+    assert "If-Modified-Since" not in sent[2][1]                           # new article: no stale validators
+    assert "next_New_Zealand" in (tmp_path / "2026.html").read_text()      # and its HTML replaced the old one
+
+
+def test_polling_pages_stop_at_the_forecast_election(root):
+    from pollofpolls.config import Config
+    cfg = Config(root)
+    cfg.elections_cfg["elections"].append({"year": 2029, "date": "2029-10-01", "pm_party": "National"})
+    assert [y for y, _ in cfg.polling_pages] == [2011, 2014, 2017, 2020, 2023, 2026]
+    assert max(e.year for e in cfg.window_elections) == 2026
+
+
+def test_backtest_blocs_come_from_config(root):
+    from pollofpolls.config import Config
+    from pollofpolls.eval.backtest import blocs_for
+    cfg = Config(root)
+    assert blocs_for(cfg, 2023) == (["National", "ACT"], ["Labour", "Green", "Te Pāti Māori"])
+    assert blocs_for(cfg, 2029) == (["National", "ACT"], ["Labour", "Green"])      # default
+
+
+def test_balance_of_power_outcomes_are_exclusive():
+    from pollofpolls.forecast.coalitions import balance_of_power
+    parties = ["National", "Labour", "Green", "ACT", "NZ First", "TOP", "Other"]
+    # House of 120, majority 61. Right = National + ACT.
+    seats = np.array([
+        [55, 30, 10, 8, 10, 7, 0],   # right 63: alone
+        [48, 35, 10, 8, 12, 7, 0],   # right 56: NZ First (68) or TOP (63) each enough
+        [50, 35, 12, 6, 12, 5, 0],   # right 56: NZ First (68) or TOP (61) each enough
+        [45, 40, 13, 8, 7, 7, 0],    # right 53: neither alone (60, 60), both 67
+        [40, 45, 15, 6, 7, 7, 0],    # right 46: short even with both (60)
+    ])
+    total = np.full(len(seats), 120)
+    rows = balance_of_power(seats, parties, total, {"Right bloc": ["National", "ACT"]}, ["NZ First", "TOP"])
+    r = rows[0]
+    assert r["p_alone"] == 0.2 and r["p_needs_all"] == 0.2 and r["p_short"] == 0.2
+    assert r["p_any_one"] == 0.4 and r["p_with"]["NZ First"] == 0.4 and r["p_with"]["TOP"] == 0.4
+    assert abs(r["p_alone"] + r["p_any_one"] + r["p_needs_all"] + r["p_short"] - 1) < 1e-12

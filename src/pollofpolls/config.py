@@ -102,9 +102,15 @@ class Config:
         return out
 
     @property
+    def window_elections(self) -> list[Election]:
+        """Elections from the anchor to the forecast election inclusive. Later calendar entries are ignored."""
+        last = self.forecast_election.year
+        return [e for e in self.elections if self.anchor_election <= e.year <= last]
+
+    @property
     def polling_pages(self) -> list[tuple[int, str | None]]:
         """(year, article title override) for every polling page the model reads: anchor to forecast election."""
-        return [(e.year, e.wikipedia_page) for e in self.elections if e.year >= self.anchor_election]
+        return [(e.year, e.wikipedia_page) for e in self.window_elections]
 
     @property
     def anchor_election(self) -> int:

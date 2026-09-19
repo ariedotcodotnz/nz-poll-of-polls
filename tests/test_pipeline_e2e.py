@@ -65,6 +65,10 @@ def test_prep_forecast_report(tmp_path, root, fixtures):
     assert abs(sum(r["mean"] for r in summary["election_day"].values()) - 1) < 1e-6
     assert all(0 <= c["p_majority"] <= 1 for c in summary["coalitions_election_day"])
     assert summary["expected_house_size"] >= 120
+    assert any("TOP" in c["parties"] for c in summary["coalitions_election_day"])
+    for r in summary["balance_of_power"]["election_day"]:
+        assert set(r["p_with"]) == {"NZ First", "TOP"}
+        assert abs(r["p_alone"] + r["p_any_one"] + r["p_needs_all"] + r["p_short"] - 1) < 1e-9
     for f in ["forecast.csv", "seats.csv", "coalitions.csv", "trend.csv", "house_effects.csv", "summary.json"]:
         assert (tmp_path / "output" / f).exists(), f
 
@@ -72,6 +76,7 @@ def test_prep_forecast_report(tmp_path, root, fixtures):
     assert "NZ Poll of Polls 2026" in html and "Plotly.newPlot" in html
     assert "<script>alert(1)" not in html and "</script><script>" not in html
     assert "Evil" in html                                  # the label is shown, safely escaped
+    assert "Who holds the balance of power" in html and "Enough with TOP" in html
     for f in ["voting_intention620.svg", "voting_intention375.svg", "election_night620.svg", "saturday375.svg"]:
         assert (tmp_path / "output" / f).stat().st_size > 1000
     assert json.loads((tmp_path / "site" / "summary.json").read_text())["election_date"] == "2026-11-07"

@@ -25,10 +25,22 @@ electorates:
   - {electorate: Ikaroa-Rāwhiti,    party: Te Pāti Māori,  p: 0.30, at_share: 0.03, slope: 0.40}
 
 # Coalition scenarios reported. Majority is computed per simulation from the simulated House size.
+# TOP (The Opportunities Party) calls itself centrist, so combinations with either side are shown.
 coalitions:
   - {name: "National + ACT + NZ First", parties: [National, ACT, NZ First]}
   - {name: "National + ACT",            parties: [National, ACT]}
   - {name: "National + NZ First",       parties: [National, NZ First]}
+  - {name: "National + ACT + TOP",      parties: [National, ACT, TOP]}
   - {name: "Labour + Green + Te Pāti Māori", parties: [Labour, Green, Te Pāti Māori]}
   - {name: "Labour + Green",            parties: [Labour, Green]}
   - {name: "Labour + Green + NZ First", parties: [Labour, Green, NZ First]}
+  - {name: "Labour + Green + TOP",      parties: [Labour, Green, TOP]}
+  - {name: "Labour + Green + Te Pāti Māori + TOP", parties: [Labour, Green, Te Pāti Māori, TOP]}
+
+# Balance of power: for each bloc, the chance it has a majority alone, with one pivot party, only with all of
+# them, or not even then. Pivots are parties that could plausibly support either bloc.
+balance_of_power:
+  blocs:
+    Right bloc: [National, ACT]
+    Left bloc: [Labour, Green, Te Pāti Māori]
+  pivots: [NZ First, TOP]

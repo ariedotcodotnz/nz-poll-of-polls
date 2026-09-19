@@ -40,15 +40,33 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: python -m pytest -q
 
-  backtest:
+  backtest-plan:
     if: github.event_name == 'workflow_dispatch' && inputs.backtest
     needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pyyaml
+      - id: targets
+        name: Read the backtest elections from config/model.yml
+        run: |
+          targets=$(python -c 'import json, yaml; print(json.dumps(yaml.safe_load(open("config/model.yml"))["backtest"]["targets"]))')
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "Backtest elections: $targets"
+
+  backtest:
+    needs: backtest-plan
     runs-on: ubuntu-latest
     timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
-        target: [2017, 2020, 2023]
+        target: ${{ fromJSON(needs.backtest-plan.outputs.targets) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -72,7 +90,7 @@ jobs:
           retention-days: 30
 
   backtest-aggregate:
-    needs: backtest
+    needs: [backtest-plan, backtest]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +107,9 @@ jobs:
           merge-multiple: true
       - name: Check every election was rebuilt
         run: |
-          for y in 2017 2020 2023; do ls output/backtest/cases/*_${y}_h*.json > /dev/null; done
+          for y in $(echo '${{ needs.backtest-plan.outputs.targets }}' | tr -d '[],'); do
+            ls output/backtest/cases/*_${y}_h*.json > /dev/null
+          done
       - run: pollofpolls backtest --no-run
       - name: Commit backtest results
         run: |
@@ -118,8 +138,10 @@ jobs:
         with:
           path: data/processed
           key: fits-${{ hashFiles('src/pollofpolls/**', 'config/**') }}-${{ github.run_id }}
+          # fall back to the latest cache from any code or config version: each fit's fingerprint decides reuse
           restore-keys: |
             fits-${{ hashFiles('src/pollofpolls/**', 'config/**') }}-
+            fits-
       - run: pollofpolls fetch
       - run: pollofpolls prep
       - run: pollofpolls fit
@@ -138,6 +160,8 @@ jobs:
 
   deploy:
     needs: run
+    # run depends on the optional backtest jobs; without this condition a skipped backtest would skip deploy too
+    if: always() && needs.run.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

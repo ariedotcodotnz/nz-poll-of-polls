@@ -73,7 +73,18 @@ Each entry of `electorates`:
 only if its result can change the proportional allocation: a party that may fall below 5%, or a possible
 independent winner. Electorates won by parties safely above 5% make no difference.
 
-`coalitions` lists the combinations reported, each with a `name` and a list of `parties`.
+`coalitions` lists the combinations reported, each with a `name` and a list of `parties`. It includes
+combinations with TOP on either side, because TOP calls itself centrist and may clear the threshold.
+
+`balance_of_power` defines the analysis of who decides the government:
+
+| Key | Meaning |
+|---|---|
+| `blocs` | map of bloc name to its core parties, by default National + ACT and Labour + Green + Te Pāti Māori |
+| `pivots` | parties that could support either bloc, by default NZ First and TOP |
+
+For each bloc the report gives the chance of a majority alone, with each pivot party on its own, only with
+all pivots together, or not even then.
 
 ## model.yml
 
@@ -97,7 +108,8 @@ independent winner. Electorates won by parties safely above 5% make no differenc
 | `mcmc` | `chains`, `warmup`, `samples`, `max_tree_depth`, `target_accept` and `seed` for live fits |
 | `priors` | prior scales; see the table below |
 | `election_obs_sd` | log-ratio noise on election results, used only by the Kalman variant |
-| `backtest.variants`, `targets`, `horizons_weeks` | what the backtests run |
+| `backtest.variants`, `targets`, `horizons_weeks` | what the backtests run. GitHub Actions starts one job per election in `targets`. |
+| `backtest.blocs` | per target election, the `right` and `left` parties compared by the bloc-lead Brier score; others default to National + ACT against Labour + Green |
 | `backtest.mcmc` | MCMC settings that override `mcmc` in backtests |
 | `seats.n_sims` | number of simulated elections |
 | `forecast.calibrate_spread` | apply the backtest-fitted spread calibration; off, see [Evaluation](evaluation.md) |

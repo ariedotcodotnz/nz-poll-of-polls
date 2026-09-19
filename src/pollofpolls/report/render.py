@@ -14,6 +14,11 @@ from ..config import Config
 from . import charts
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
+DOWNLOADS = ["summary.json", "forecast.csv", "seats.csv", "coalitions.csv", "trend.csv", "house_effects.csv"]
+CHARTS = ["voting_intention620.svg", "voting_intention375.svg", "election_night620.svg", "election_night375.svg",
+          "saturday620.svg", "saturday375.svg"]
+BACKTEST_DOWNLOADS = ["summary.csv", "summary_by_horizon.csv", "head_to_head.csv", "scores.csv", "stacking.json",
+                      "probe_fundamentals.json"]
 
 
 LABELS = {"legacy": "2023 model (replica)", "base": "Dirichlet-multinomial", "gauss": "Gaussian",
@@ -57,7 +62,7 @@ def render_report(cfg: Config) -> Path:
     parties = list(summary["parties"])
     colours = cfg.colours
     coalitions = cfg.electorates_cfg["coalitions"]
-    election_dates = [e.date for e in cfg.elections if e.year >= cfg.anchor_election]
+    election_dates = [e.date for e in cfg.window_elections]
     anchor_date = cfg.election(cfg.anchor_election).date
     polls_window = polls.filter(pl.col("mid_date") > anchor_date)
 
@@ -96,15 +101,20 @@ def render_report(cfg: Config) -> Path:
         summary=summary, parties=parties, colours=colours, figs=figs,
         coalitions_election=summary["coalitions_election_day"], coalitions_now=summary["coalitions_now"],
         seats=summary["seats_election_day"], bt=bt, anchor_year=cfg.anchor_election,
-        last_result_year=max(e.year for e in cfg.elections if not e.forecast),
+        downloads=[f for f in DOWNLOADS if (out / f).exists()], charts=[f for f in CHARTS if (out / f).exists()],
+        backtest_downloads=[f for f in BACKTEST_DOWNLOADS if (out / "backtest" / f).exists()],
+        last_result_year=max(e.year for e in cfg.window_elections if not e.forecast),
         recent_polls=recent_polls.to_dicts(), recent_cols=recent_cols, today=date.today().isoformat(),
         election=cfg.forecast_election, house=house.to_dicts() if house is not None else [],
     )
     (site / "index.html").write_text(html, encoding="utf-8")
-    for f in ["summary.json", "forecast.csv", "seats.csv", "coalitions.csv", "trend.csv", "house_effects.csv",
-              "voting_intention620.svg", "voting_intention375.svg", "election_night620.svg", "election_night375.svg",
-              "saturday620.svg", "saturday375.svg"]:
+    for f in DOWNLOADS + CHARTS:
         if (out / f).exists():
             (site / f).write_bytes((out / f).read_bytes())
+    if (out / "backtest").is_dir():
+        (site / "backtest").mkdir(exist_ok=True)
+        for f in BACKTEST_DOWNLOADS:
+            if (out / "backtest" / f).exists():
+                (site / "backtest" / f).write_bytes((out / "backtest" / f).read_bytes())
     print(f"[pollofpolls] report written to {site / 'index.html'}")
     return site / "index.html"

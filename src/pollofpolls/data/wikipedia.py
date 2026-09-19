@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import requests
@@ -61,23 +61,28 @@ def fetch_page(year: int, raw_dir: Path, force: bool = False, timeout: int = 60,
     raw_dir.mkdir(parents=True, exist_ok=True)
     html_path = raw_dir / f"{year}.html"
     meta_path = raw_dir / f"{year}.meta.json"
+    url = page_url(year, page)
     headers = {"User-Agent": USER_AGENT}
-    meta = {}
     if meta_path.exists() and html_path.exists() and not force:
         meta = json.loads(meta_path.read_text())
-        if meta.get("etag"):
-            headers["If-None-Match"] = meta["etag"]
-        if meta.get("last_modified"):
-            headers["If-Modified-Since"] = meta["last_modified"]
-    resp = requests.get(page_url(year, page), headers=headers, timeout=timeout)
-    if resp.status_code == 304 and html_path.exists():
-        return html_path
+        # validators only describe the article they came from; after a change of article, download afresh
+        if meta.get("requested_url") == url:
+            if meta.get("etag"):
+                headers["If-None-Match"] = meta["etag"]
+            if meta.get("last_modified"):
+                headers["If-Modified-Since"] = meta["last_modified"]
+    resp = requests.get(url, headers=headers, timeout=timeout)
+    if resp.status_code == 304:
+        if "If-None-Match" in headers or "If-Modified-Since" in headers:
+            return html_path
+        raise RuntimeError(f"{url} answered 304 to an unconditional request")
     resp.raise_for_status()
     html_path.write_text(resp.text, encoding="utf-8")
     meta_path.write_text(json.dumps({
+        "requested_url": url,
         "etag": resp.headers.get("ETag"),
         "last_modified": resp.headers.get("Last-Modified"),
-        "fetched_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "url": resp.url,
     }))
     return html_path

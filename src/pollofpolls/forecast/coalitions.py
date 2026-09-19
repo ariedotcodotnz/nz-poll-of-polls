@@ -36,15 +36,34 @@ def party_seat_summary(seats: np.ndarray, parties: list[str]) -> list[dict]:
     return rows
 
 
-def kingmaker_probabilities(seats: np.ndarray, parties: list[str], total_seats: np.ndarray,
-                            blocs: dict[str, list[str]], pivot: str) -> dict[str, float]:
-    """Probability that the pivot party is needed by either bloc, or that a bloc has a majority without it."""
+def balance_of_power(seats: np.ndarray, parties: list[str], total_seats: np.ndarray,
+                     blocs: dict[str, list[str]], pivots: list[str]) -> list[dict]:
+    """Who holds the balance of power, per simulation, for each bloc.
+
+    For each bloc the outcomes are exclusive and sum to one: a majority alone; short alone but a majority with
+    at least one pivot party on its own (``p_with`` gives each pivot's chance of being enough); a majority only
+    with every pivot together; or short even with all of them.
+    """
     idx = {p: i for i, p in enumerate(parties)}
     need = majority_threshold(total_seats)
-    out = {}
+    zero = np.zeros(len(seats), dtype=int)
+    piv = {p: (seats[:, idx[p]] if p in idx else zero) for p in pivots}
+    all_piv = sum(piv.values(), zero)
+    rows = []
     for name, members in blocs.items():
-        base = seats[:, [idx[p] for p in members if p in idx and p != pivot]].sum(1)
-        with_pivot = base + (seats[:, idx[pivot]] if pivot in idx else 0)
-        out[f"{name} majority without {pivot}"] = float((base >= need).mean())
-        out[f"{name} majority only with {pivot}"] = float(((base < need) & (with_pivot >= need)).mean())
-    return out
+        base = seats[:, [idx[p] for p in members if p in idx]].sum(1)
+        alone = base >= need
+        enough = {p: (~alone) & (base + s >= need) for p, s in piv.items()}
+        any_one = np.zeros(len(seats), dtype=bool)
+        for v in enough.values():
+            any_one |= v
+        needs_all = (~alone) & (~any_one) & (base + all_piv >= need)
+        rows.append({
+            "bloc": name, "parties": list(members), "pivots": list(pivots),
+            "p_alone": float(alone.mean()),
+            "p_with": {p: float(v.mean()) for p, v in enough.items()},
+            "p_any_one": float(any_one.mean()),
+            "p_needs_all": float(needs_all.mean()),
+            "p_short": float((base + all_piv < need).mean()),
+        })
+    return rows

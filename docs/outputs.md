@@ -21,7 +21,7 @@ Everything the report shows, in one file.
 | `election_day`, `now` | per party: `mean`, quantiles and `p_over_5pct` |
 | `seats_election_day` | per party: seat mean and quantiles, and `p_any_seats` |
 | `coalitions_election_day`, `coalitions_now` | per coalition: seats and `p_majority` |
-| `kingmaker` | probability each bloc has a majority without NZ First, or only with it |
+| `balance_of_power` | for `election_day` and `now`, per bloc: `p_alone`, `p_with` (each pivot party alone enough), `p_any_one`, `p_needs_all` and `p_short`; the four outcomes other than `p_with` are exclusive and sum to one |
 | `expected_house_size`, `p_overhang` | size of the House, including overhang |
 | `diagnostics` | per variant: divergences, largest R-hat, smallest effective sample size, run time |
 
@@ -81,7 +81,9 @@ Score definitions are in [Evaluation](evaluation.md).
 ## site/ (published to GitHub Pages)
 
 `index.html` is the report. It is a single page whose chart data is embedded, and it loads Plotly from a CDN.
-The CSV, JSON and SVG outputs are copied next to it so they can be downloaded from the published site.
+The CSV, JSON and SVG outputs are copied next to it, and the backtest tables (`summary.csv`,
+`summary_by_horizon.csv`, `head_to_head.csv`, `scores.csv`, `stacking.json`, `probe_fundamentals.json`) into
+`backtest/`. The page's Data section links to all of them, so they can be downloaded from the published site.
 
 ## data/processed/ (regenerated, not committed)
 

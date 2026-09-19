@@ -133,6 +133,9 @@ For each of 4,000 simulated elections:
    grows.
 5. **Majorities.** A coalition has a majority when its seats reach half the simulated House size, rounded down,
    plus one.
+6. **Balance of power.** For each bloc in `balance_of_power` (National + ACT, and Labour + Green + Te Pāti Māori),
+   each simulation is classed as a majority alone; short, but a majority with one pivot party on its own
+   (NZ First or TOP); a majority only with both pivots; or short even then.
 
 The allocation reproduces the official 2011, 2014, 2017, 2020 and 2023 outcomes; see `tests/test_seats.py`.
 

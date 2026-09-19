@@ -26,18 +26,19 @@ from .calibration import factor, fit_spread, inflate
 from .scoring import (brier, crps_components, crps_stacking_weights, keep_index, mixture_draws,
                       score_forecast)
 
-# Headline seat-bloc event scored with the Brier score: "right bloc wins more seats than left bloc".
-BLOCS = {
-    2017: (["National", "ACT"], ["Labour", "Green"]),
-    2020: (["National", "ACT"], ["Labour", "Green"]),
-    2023: (["National", "ACT"], ["Labour", "Green", "Te Pāti Māori"]),
-}
+DEFAULT_BLOCS = {"right": ["National", "ACT"], "left": ["Labour", "Green"]}
 
 
-def bloc_probability(draws: np.ndarray, parties: list[str], target: int, electorates: dict[str, int],
-                     outcome: np.ndarray) -> tuple[float, bool]:
+def blocs_for(cfg: Config, target: int) -> tuple[list[str], list[str]]:
+    """The seat blocs compared by the backtest Brier score, from backtest.blocs in config/model.yml."""
+    b = {int(k): v for k, v in (cfg.model_cfg.get("backtest", {}).get("blocs") or {}).items()}.get(target, DEFAULT_BLOCS)
+    return list(b["right"]), list(b["left"])
+
+
+def bloc_probability(draws: np.ndarray, parties: list[str], blocs: tuple[list[str], list[str]],
+                     electorates: dict[str, int], outcome: np.ndarray) -> tuple[float, bool]:
     """P(right bloc has more seats than left bloc) using the electorates actually won, and what happened."""
-    right, left = BLOCS.get(target, (["National", "ACT"], ["Labour", "Green"]))
+    right, left = blocs
     idx = {p: i for i, p in enumerate(parties)}
     el = np.array([electorates.get(p, 0) for p in parties])
 
@@ -83,7 +84,7 @@ def backtest_case(cfg: Config, polls: pl.DataFrame, results: dict, target: int, 
     outcome = result_vector(results[target], ds.parties)
     draws = fr.pi_target
     el = load_electorate_seats(cfg.paths.reference / "electorate_seats.csv").get(target, {})
-    p_event, actual = bloc_probability(draws, ds.parties, target, el, outcome)
+    p_event, actual = bloc_probability(draws, ds.parties, blocs_for(cfg, target), el, outcome)
     record = {
         "target": target, "horizon_weeks": horizon_weeks, "variant": variant_name, "cutoff": cutoff.isoformat(),
         "n_polls": int(ds.N), "parties": ds.parties, "p_right_bloc_ahead": p_event, "right_bloc_ahead": actual,
@@ -197,7 +198,8 @@ def aggregate(cfg: Config, out_dir: Path, ensemble: list[str], baseline: str = "
                 for label, mix in (("ensemble", loeo_mix[key]),
                                    ("calibrated", inflate(loeo_mix[key], factor(spread, key[1]))),
                                    ("equal", mixture_draws(sets, equal, 4000, seed=seed))):
-                    p_event, actual = bloc_probability(mix, parties, key[0], el_all.get(key[0], {}), outcome)
+                    p_event, actual = bloc_probability(mix, parties, blocs_for(cfg, key[0]),
+                                                       el_all.get(key[0], {}), outcome)
                     rec = {"target": key[0], "horizon_weeks": key[1], "variant": label, "parties": parties,
                            "p_right_bloc_ahead": p_event, "right_bloc_ahead": actual,
                            "brier_bloc": brier(p_event, actual), **score_forecast(mix, parties, outcome)}

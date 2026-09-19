@@ -8,8 +8,9 @@
 | Job | Runs | Does |
 |---|---|---|
 | `test` | always | installs the package and runs the test suite |
-| `backtest` | only on demand, with "Re-run the rolling-origin backtests" ticked | one job per past election, in parallel. Each starts from an empty `output/backtest/` and uploads only its own election's cases and fits. |
-| `backtest-aggregate` | after `backtest` | checks every election arrived, scores all cases, refits the stacking weights and commits `output/backtest/` |
+| `backtest-plan` | only on demand, with "Re-run the rolling-origin backtests" ticked | reads the backtest elections from `config/model.yml` |
+| `backtest` | after `backtest-plan` | one job per election, in parallel. Each starts from an empty `output/backtest/` and uploads only its own election's cases and fits. |
+| `backtest-aggregate` | after `backtest` | checks every configured election arrived, scores all cases, refits the stacking weights and commits `output/backtest/` |
 | `run` | after `test`, and after `backtest-aggregate` when that ran | fetch, prep, fit, forecast and report; commits `output/*.csv` and `output/*.json`; uploads `site/` |
 | `deploy` | after `run` | publishes `site/` to GitHub Pages |
 
@@ -20,9 +21,12 @@ The bot's commits are pushed with the workflow's own token, which does not trigg
 
 ### Publishing
 
-In the repository settings, set Pages > Source to "GitHub Actions". The report is then published at
-`https://<owner>.github.io/<repository>/`, for example <https://ariedotcodotnz.github.io/nz-poll-of-polls/>.
-No secrets are needed.
+Pages is enabled with Settings > Pages > Source set to "GitHub Actions", and the report is published at
+<https://ariedotcodotnz.github.io/nz-poll-of-polls/>. A fork needs the same setting, and its site appears at
+`https://<owner>.github.io/<repository>/`. No secrets are needed.
+
+The `deploy` job runs whenever `run` succeeds, including the usual case where the optional backtest jobs were
+skipped. Every run replaces the published site, so the page always matches the latest committed outputs.
 
 ### Running the backtests
 
@@ -52,11 +56,15 @@ After the 2026 results are official:
    `wikipedia_page` to that title.
 2. **Reference data.** Add the 2026 party-vote shares to `data/reference/election_results.csv` and the
    electorates won to `data/reference/electorate_seats.csv`.
-3. **Assumptions.** Rewrite `config/electorates.yml` for the new Parliament, including the coalitions to report.
-4. **Backtests.** Add 2026 to `backtest.targets` in `config/model.yml` and its blocs to `BLOCS` in
-   `src/pollofpolls/eval/backtest.py`, then re-run the backtests to refresh the stacking weights.
+3. **Assumptions.** Rewrite `config/electorates.yml` for the new Parliament, including the coalitions to report
+   and the blocs and pivot parties for the balance-of-power table.
+4. **Backtests.** Add 2026 to `backtest.targets` in `config/model.yml` and its seat blocs to `backtest.blocs`,
+   then re-run the backtests to refresh the stacking weights. The GitHub Actions workflow reads the same list, so
+   it starts a job for 2026 and checks that its results arrive.
 5. **Tests.** Add a fixture of the new polling table to `tests/fixtures/`, add the new page year to the `YEARS`
    lists in the tests, and update the result rows expected from the 2026 page in
    `test_every_page_parses_with_election_rows`.
 
-The page list, report title and forecast window all follow the calendar, so no other code changes are needed.
+The page list, report title, chart window and CI backtest jobs all follow the configuration, so the only code
+to change is the tests. Calendar entries after the forecast election are ignored, so the next election can be
+added early without affecting the current forecast.

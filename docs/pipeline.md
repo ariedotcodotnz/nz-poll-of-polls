@@ -17,8 +17,9 @@ so stages can be rerun independently.
 ## fetch
 
 Downloads the polling article for every election from `anchor_election` to the forecast election
-(see [Configuration](configuration.md)). Requests are conditional: the `ETag` and `Last-Modified` headers are
-kept in `<year>.meta.json`, and an unchanged page is not downloaded again.
+(see [Configuration](configuration.md)); later calendar entries are ignored. Requests are conditional: the
+`ETag` and `Last-Modified` headers are kept in `<year>.meta.json` with the article they came from, and an
+unchanged page is not downloaded again. If an election's article changes, it is downloaded in full.
 
 | Option | Effect |
 |---|---|

@@ -46,9 +46,15 @@ election_obs_sd: 0.01        # only used by the Kalman variant (the other varian
 
 backtest:
   variants: [legacy, base, gauss, heavy]
-  targets: [2017, 2020, 2023]
+  targets: [2017, 2020, 2023]        # GitHub Actions runs one job per election listed here
   horizons_weeks: [26, 8, 4, 1]
   mcmc: {chains: 2, warmup: 500, samples: 500}
+  # Seat blocs for the Brier score "right bloc wins more seats than left bloc", per target election.
+  # Targets not listed use right: [National, ACT], left: [Labour, Green].
+  blocs:
+    2017: {right: [National, ACT], left: [Labour, Green]}
+    2020: {right: [National, ACT], left: [Labour, Green]}
+    2023: {right: [National, ACT], left: [Labour, Green, Te Pāti Māori]}
 
 seats:
   n_sims: 4000

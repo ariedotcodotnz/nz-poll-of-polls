@@ -47,10 +47,22 @@
       <div class="sub">{{ '%.0f'|format(c.seats_mean) }} seats ({{ '%.0f'|format(c.seats_q05) }}–{{ '%.0f'|format(c.seats_q95) }})</div></div>
     {% endfor %}
   </div>
-  <p class="small muted">Probability that NZ First is needed for a majority: right bloc
-    {{ '%.0f'|format(summary.kingmaker['Right bloc majority only with NZ First']*100) }}%, left bloc
-    {{ '%.0f'|format(summary.kingmaker['Left bloc majority only with NZ First']*100) }}%.
-    Expected House size {{ '%.1f'|format(summary.expected_house_size) }} seats
+  {% set bop = summary.balance_of_power.election_day %}
+  {% if bop %}
+  <h3>Who holds the balance of power</h3>
+  <p class="small muted">Chance of each outcome on election day. The columns for a single party are the chance that
+    it alone would give the bloc a majority; when both would, both columns count it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Bloc</th><th>Majority alone</th>{% for p in bop[0].pivots %}<th>Enough with {{ p }}</th>{% endfor %}
+      <th>Needs {{ bop[0].pivots|join(' and ') }}</th><th>Short even then</th></tr></thead>
+    <tbody>{% for r in bop %}
+      <tr><td>{{ r.bloc }} <span class="muted small">({{ r.parties|join(', ') }})</span></td>
+        <td>{{ '%.0f'|format(r.p_alone*100) }}%</td>
+        {% for p in r.pivots %}<td>{{ '%.0f'|format(r.p_with[p]*100) }}%</td>{% endfor %}
+        <td>{{ '%.0f'|format(r.p_needs_all*100) }}%</td><td>{{ '%.0f'|format(r.p_short*100) }}%</td></tr>
+    {% endfor %}</tbody></table></div>
+  {% endif %}
+  <p class="small muted">Expected House size {{ '%.1f'|format(summary.expected_house_size) }} seats
     (overhang probability {{ '%.0f'|format(summary.p_overhang*100) }}%).</p>
 
   <div class="tablewrap"><table>
@@ -128,6 +140,15 @@
       <tr><td>{{ r.date_text }}</td><td>{{ r.pollster }}</td><td>{{ r.sample_size }}</td>
       {% for p in recent_cols %}<td>{% if r[p] is not none %}{{ '%.1f'|format(r[p]*100) }}{% else %}–{% endif %}</td>{% endfor %}</tr>
     {% endfor %}</tbody></table></div>
+
+  <h2>Data</h2>
+  <p class="small">The numbers behind this page, updated with every run. Column definitions are in the
+    <a href="https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/outputs.md">outputs documentation</a>.</p>
+  <ul class="small">
+    <li>Forecast: {% for f in downloads %}<a href="{{ f }}">{{ f }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>
+    {% if charts %}<li>Charts: {% for f in charts %}<a href="{{ f }}">{{ f }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>{% endif %}
+    {% if backtest_downloads %}<li>Backtests: {% for f in backtest_downloads %}<a href="backtest/{{ f }}">{{ f }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>{% endif %}
+  </ul>
 
   <h2>About the model</h2>
   <p class="small">Latent weekly vote intention for {{ parties|length - 1 }} parties (plus "other") follows a correlated random

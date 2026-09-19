@@ -13,7 +13,7 @@ from .cache import StageCache, fingerprint
 from .config import Config
 from .data.results import election_results_from_polls, load_reference_results, verify_results
 from .data.wikipedia import Poll, fetch_page, parse_page_file
-from .forecast.coalitions import coalition_table, kingmaker_probabilities, party_seat_summary
+from .forecast.coalitions import balance_of_power, coalition_table, party_seat_summary
 from .forecast.simulate import apply_fundamentals, simulate_seats
 from .prep.marshal import Dataset, alr_inverse, build_dataset
 from .prep.polls_table import build_polls_table
@@ -241,8 +241,10 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
                 house_rows.append({"house": label, "party": p, "effect_pp": float((shifted[k] - base_pi[k]) * 100)})
     pl.DataFrame(house_rows).write_csv(out / "house_effects.csv")
 
-    blocs = {"Right bloc": ["National", "ACT", "NZ First"], "Left bloc": ["Labour", "Green", "Te Pāti Māori", "NZ First"]}
-    kingmaker = kingmaker_probabilities(sim_target["seats"], ds.parties, sim_target["total"], blocs, "NZ First")
+    bop_cfg = cfg.electorates_cfg.get("balance_of_power", {})
+    bop = {when: balance_of_power(sim["seats"], ds.parties, sim["total"], bop_cfg.get("blocs", {}),
+                                  bop_cfg.get("pivots", []))
+           for when, sim in (("election_day", sim_target), ("now", sim_now))}
     table, _ = load_prepped(cfg)
     latest = table.filter(pl.col("cycle") == target)
     summary = {
@@ -262,7 +264,7 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
         "seats_election_day": party_seat_summary(sim_target["seats"], ds.parties),
         "coalitions_election_day": coalition_table(sim_target["seats"], ds.parties, coal_cfg, sim_target["total"]),
         "coalitions_now": coalition_table(sim_now["seats"], ds.parties, coal_cfg, sim_now["total"]),
-        "kingmaker": kingmaker,
+        "balance_of_power": bop,
         "expected_house_size": float(sim_target["total"].mean()),
         "p_overhang": float((sim_target["total"] > 120).mean()),
         "diagnostics": {v: fits[v].diagnostics for v in variants},
