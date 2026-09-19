@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-19T02:51:07+00:00",
+ "generated_at": "2026-09-19T02:55:02+00:00",
  "election_date": "2026-11-07",
  "days_to_election": 49,
  "cutoff": "2026-09-19",
@@ -322,6 +322,18 @@
    "p_majority": 0.035
   },
   {
+   "name": "National + ACT + TOP",
+   "parties": [
+    "National",
+    "ACT",
+    "TOP"
+   ],
+   "seats_mean": 54.18875,
+   "seats_q05": 45.0,
+   "seats_q95": 63.0,
+   "p_majority": 0.113
+  },
+  {
    "name": "Labour + Green + Te Pāti Māori",
    "parties": [
     "Labour",
@@ -355,6 +367,31 @@
    "seats_q05": 53.0,
    "seats_q95": 72.0,
    "p_majority": 0.60775
+  },
+  {
+   "name": "Labour + Green + TOP",
+   "parties": [
+    "Labour",
+    "Green",
+    "TOP"
+   ],
+   "seats_mean": 54.77575,
+   "seats_q05": 45.0,
+   "seats_q95": 64.0,
+   "p_majority": 0.14025
+  },
+  {
+   "name": "Labour + Green + Te Pāti Māori + TOP",
+   "parties": [
+    "Labour",
+    "Green",
+    "Te Pāti Māori",
+    "TOP"
+   ],
+   "seats_mean": 58.329,
+   "seats_q05": 49.0,
+   "seats_q95": 68.0,
+   "p_majority": 0.32575
   }
  ],
  "coalitions_now": [
@@ -393,6 +430,18 @@
    "p_majority": 0.0005
   },
   {
+   "name": "National + ACT + TOP",
+   "parties": [
+    "National",
+    "ACT",
+    "TOP"
+   ],
+   "seats_mean": 54.44125,
+   "seats_q05": 50.0,
+   "seats_q95": 59.0,
+   "p_majority": 0.00775
+  },
+  {
    "name": "Labour + Green + Te Pāti Māori",
    "parties": [
     "Labour",
@@ -426,13 +475,116 @@
    "seats_q05": 58.0,
    "seats_q95": 67.0,
    "p_majority": 0.696
+  },
+  {
+   "name": "Labour + Green + TOP",
+   "parties": [
+    "Labour",
+    "Green",
+    "TOP"
+   ],
+   "seats_mean": 55.2915,
+   "seats_q05": 51.0,
+   "seats_q95": 59.0,
+   "p_majority": 0.01225
+  },
+  {
+   "name": "Labour + Green + Te Pāti Māori + TOP",
+   "parties": [
+    "Labour",
+    "Green",
+    "Te Pāti Māori",
+    "TOP"
+   ],
+   "seats_mean": 58.76225,
+   "seats_q05": 54.0,
+   "seats_q95": 63.0,
+   "p_majority": 0.23225
   }
  ],
- "kingmaker": {
-  "Right bloc majority without NZ First": 0.00525,
-  "Right bloc majority only with NZ First": 0.5675,
-  "Left bloc majority without NZ First": 0.06,
-  "Left bloc majority only with NZ First": 0.773
+ "balance_of_power": {
+  "election_day": [
+   {
+    "bloc": "Right bloc",
+    "parties": [
+     "National",
+     "ACT"
+    ],
+    "pivots": [
+     "NZ First",
+     "TOP"
+    ],
+    "p_alone": 0.00525,
+    "p_with": {
+     "NZ First": 0.5675,
+     "TOP": 0.10775
+    },
+    "p_any_one": 0.599,
+    "p_needs_all": 0.30425,
+    "p_short": 0.0915
+   },
+   {
+    "bloc": "Left bloc",
+    "parties": [
+     "Labour",
+     "Green",
+     "Te Pāti Māori"
+    ],
+    "pivots": [
+     "NZ First",
+     "TOP"
+    ],
+    "p_alone": 0.06,
+    "p_with": {
+     "NZ First": 0.773,
+     "TOP": 0.26575
+    },
+    "p_any_one": 0.80575,
+    "p_needs_all": 0.124,
+    "p_short": 0.01025
+   }
+  ],
+  "now": [
+   {
+    "bloc": "Right bloc",
+    "parties": [
+     "National",
+     "ACT"
+    ],
+    "pivots": [
+     "NZ First",
+     "TOP"
+    ],
+    "p_alone": 0.0,
+    "p_with": {
+     "NZ First": 0.55375,
+     "TOP": 0.00775
+    },
+    "p_any_one": 0.55375,
+    "p_needs_all": 0.438,
+    "p_short": 0.00825
+   },
+   {
+    "bloc": "Left bloc",
+    "parties": [
+     "Labour",
+     "Green",
+     "Te Pāti Māori"
+    ],
+    "pivots": [
+     "NZ First",
+     "TOP"
+    ],
+    "p_alone": 0.0015,
+    "p_with": {
+     "NZ First": 0.9675,
+     "TOP": 0.23075
+    },
+    "p_any_one": 0.9675,
+    "p_needs_all": 0.031,
+    "p_short": 0.0
+   }
+  ]
  },
  "expected_house_size": 120.77525,
  "p_overhang": 0.49525,
