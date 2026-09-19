@@ -40,7 +40,8 @@ def _backtest_context(bt_dir: Path) -> dict | None:
                      "cells": [sub.get(h) for h in horizons]})
     h2h = pl.read_csv(bt_dir / "head_to_head.csv").to_dicts() if (bt_dir / "head_to_head.csv").exists() else []
     stacking = json.loads((bt_dir / "stacking.json").read_text()) if (bt_dir / "stacking.json").exists() else {}
-    return {"summary": summary, "horizons": horizons, "grid": grid, "h2h": h2h,
+    targets = sorted(pl.read_csv(bt_dir / "scores.csv")["target"].unique().to_list())
+    return {"summary": summary, "horizons": horizons, "targets": targets, "grid": grid, "h2h": h2h,
             "n_better": sum(1 for r in h2h if r["ensemble_better"]), "stacking": stacking,
             "labels": LABELS}
 

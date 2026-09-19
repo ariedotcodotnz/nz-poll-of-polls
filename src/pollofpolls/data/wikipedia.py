@@ -20,7 +20,7 @@ from .dates import clean_text, midpoint, parse_date_range
 from .parties import canonical_party
 
 URL_TEMPLATE = "https://en.wikipedia.org/wiki/Opinion_polling_for_the_{year}_New_Zealand_general_election"
-USER_AGENT = "pollofpolls/2026 (NZ poll aggregation; https://github.com/ariedotcodotnz/elite-poll-of-polls)"
+USER_AGENT = "pollofpolls/2026 (NZ poll aggregation; https://github.com/ariedotcodotnz/nz-poll-of-polls)"
 
 _POLLSTER_HEADERS = {"poll", "polling organisation", "pollster"}
 _ELECTION_ROW = re.compile(r"(\d{4}) election result", re.I)
@@ -49,7 +49,14 @@ class Poll:
         return d
 
 
-def fetch_page(year: int, raw_dir: Path, force: bool = False, timeout: int = 60) -> Path:
+def page_url(year: int, page: str | None = None) -> str:
+    """Article URL for an election's polling page; ``page`` overrides the standard title."""
+    if page:
+        return "https://en.wikipedia.org/wiki/" + page.replace(" ", "_")
+    return URL_TEMPLATE.format(year=year)
+
+
+def fetch_page(year: int, raw_dir: Path, force: bool = False, timeout: int = 60, page: str | None = None) -> Path:
     """Download the page for ``year`` into ``raw_dir`` using a conditional request; return the path."""
     raw_dir.mkdir(parents=True, exist_ok=True)
     html_path = raw_dir / f"{year}.html"
@@ -62,7 +69,7 @@ def fetch_page(year: int, raw_dir: Path, force: bool = False, timeout: int = 60)
             headers["If-None-Match"] = meta["etag"]
         if meta.get("last_modified"):
             headers["If-Modified-Since"] = meta["last_modified"]
-    resp = requests.get(URL_TEMPLATE.format(year=year), headers=headers, timeout=timeout)
+    resp = requests.get(page_url(year, page), headers=headers, timeout=timeout)
     if resp.status_code == 304 and html_path.exists():
         return html_path
     resp.raise_for_status()

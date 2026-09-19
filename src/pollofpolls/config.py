@@ -58,6 +58,7 @@ class Election:
     date: date
     pm_party: str
     forecast: bool = False
+    wikipedia_page: str | None = None   # override for the polling article's title
 
 
 class Config:
@@ -79,7 +80,8 @@ class Config:
         out = []
         for e in self.elections_cfg["elections"]:
             d = e["date"] if isinstance(e["date"], date) else date.fromisoformat(str(e["date"]))
-            out.append(Election(int(e["year"]), d, e["pm_party"], bool(e.get("forecast", False))))
+            out.append(Election(int(e["year"]), d, e["pm_party"], bool(e.get("forecast", False)),
+                                e.get("wikipedia_page")))
         return sorted(out, key=lambda e: e.date)
 
     def election(self, year: int) -> Election:
@@ -98,6 +100,11 @@ class Config:
         out = {int(e["year"]): e["pm_party"] for e in self.elections_cfg.get("pm_history", [])}
         out.update({e.year: e.pm_party for e in self.elections})
         return out
+
+    @property
+    def polling_pages(self) -> list[tuple[int, str | None]]:
+        """(year, article title override) for every polling page the model reads: anchor to forecast election."""
+        return [(e.year, e.wikipedia_page) for e in self.elections if e.year >= self.anchor_election]
 
     @property
     def anchor_election(self) -> int:

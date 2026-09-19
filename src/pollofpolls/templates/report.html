@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NZ Poll of Polls 2026</title>
-<meta name="description" content="Bayesian poll aggregation and seat forecast for the 7 November 2026 New Zealand general election">
+<title>NZ Poll of Polls {{ election.year }}</title>
+<meta name="description" content="Bayesian poll aggregation and seat forecast for the {{ election.date.strftime('%-d %B %Y') }} New Zealand general election">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   :root { --bg:#ffffff; --fg:#1b1f23; --muted:#6a737d; --card:#f6f8fa; --line:#e1e4e8; --accent:#065BAA; }
@@ -33,7 +33,7 @@
 </head>
 <body>
 <main>
-  <h1>NZ Poll of Polls 2026</h1>
+  <h1>NZ Poll of Polls {{ election.year }}</h1>
   <p class="muted">Bayesian state-space aggregation of published polls for the general election on
     <strong>{{ election.date.strftime('%-d %B %Y') }}</strong> ({{ summary.days_to_election }} days away).
     Updated {{ summary.generated_at[:10] }} · {{ summary.n_polls_cycle }} polls this term from {{ summary.pollsters_cycle|length }} pollsters ·
@@ -95,9 +95,9 @@
 
   {% if bt %}
   <h2>How well has the model done in the past?</h2>
-  <p class="small muted">Each variant was refitted using only the polls available 26, 8, 4 and 1 weeks before the
-    2017, 2020 and 2023 elections (a poll counts once its fieldwork ended and it would typically have been
-    published) and scored against the official result. CRPS is the average error of the whole
+  <p class="small muted">Each variant was refitted using only the polls available {{ bt.horizons|join(', ') }} weeks
+    before the {{ bt.targets|join(', ') }} elections (a poll counts once its fieldwork ended and it would typically have
+    been published) and scored against the official result. CRPS is the average error of the whole
     forecast distribution in percentage points (lower is better); 90% coverage is the share of parties whose result
     fell inside the 90% interval and should be close to 0.9. The published ensemble's weights for each election were
     fitted on the other two elections only, so its scores are out of sample.</p>
@@ -117,7 +117,7 @@
     {% endfor %}</tbody></table></div>
   <p class="small muted">Numbers in brackets are 90% interval coverage.
     {% if bt.h2h %}The published ensemble beat the 2023 model on CRPS in {{ bt.n_better }} of {{ bt.h2h|length }} backtest cases.{% endif %}
-    {% if bt.stacking.weights %}Stacking weights for 2026 (fitted on all three elections):
+    {% if bt.stacking.weights %}Stacking weights for {{ election.year }} (fitted on all {{ bt.targets|length }} past elections):
     {% for v, w in bt.stacking.weights.items() %}{{ bt.labels.get(v, v) }} {{ '%.2f'|format(w) }}{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}</p>
   {% endif %}
 
@@ -134,7 +134,7 @@
     walk on the log-ratio scale, pinned to the official results of the {{ anchor_year }}–{{ last_result_year }} elections.
     Each poll is modelled around the latent state plus a house effect (a persistent pollster bias and a per-term
     deviation) and an industry-wide polling error that drifts from its value after one election to its value at the
-    next. The 2026 election-day polling error cannot be seen yet, so it is drawn from the errors of past elections,
+    next. The {{ election.year }} election-day polling error cannot be seen yet, so it is drawn from the errors of past elections,
     which widens the forecast. Each pollster's effective sample size is learned from the data, unreported parties are
     treated as unobserved rather than zero, and support moves faster in the final eight weeks of a campaign. Model
     variants are combined with weights from rolling-origin backtests. Seats use the Sainte-Laguë formula with the 5%
@@ -142,7 +142,9 @@
   <p class="small muted">Model diagnostics:
     {% for v, d in summary.diagnostics.items() %}{{ v }} (max R̂ {{ '%.3f'|format(d.max_rhat) }}, min ESS {{ '%.0f'|format(d.min_ess_bulk) }},
     divergences {{ d.n_divergent }}, {{ '%.0f'|format(d.seconds) }}s){% if not loop.last %}; {% endif %}{% endfor %}.
-    Source code: <a href="https://github.com/ariedotcodotnz/elite-poll-of-polls">github.com/ariedotcodotnz/elite-poll-of-polls</a>
+    Methodology: <a href="https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/model.md">how the model works</a>
+    and <a href="https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/docs/evaluation.md">how it is tested</a>.
+    Source code: <a href="https://github.com/ariedotcodotnz/nz-poll-of-polls">github.com/ariedotcodotnz/nz-poll-of-polls</a>
     (GPL-3). Builds on Peter Ellis's 2017/2020 model and the NZ Herald 2023 Poll of Polls.</p>
 </main>
 <script>

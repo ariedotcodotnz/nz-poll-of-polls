@@ -7,7 +7,7 @@ from typing import Optional
 
 import typer
 
-app = typer.Typer(add_completion=False, help="NZ Poll of Polls 2026")
+app = typer.Typer(add_completion=False, help="NZ Poll of Polls: poll aggregation and seat forecast")
 
 
 def _cfg(root: Optional[Path]):

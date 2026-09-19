@@ -23,7 +23,15 @@ pollofpolls backtest      # rolling-origin backtests on 2017/2020/2023 -> stacki
 ```
 
 `pollofpolls all --quick` runs fetch to report with short MCMC chains for development. A full `fit`
-takes roughly 5-10 minutes per variant on 4 CPU cores.
+takes roughly 8-16 minutes per variant on 4 CPU cores. To view the report, run
+`python -m http.server 8000 --directory site` and open <http://localhost:8000>.
+
+## Documentation
+
+Full documentation is in [`docs/`](docs/README.md): [getting started](docs/getting-started.md),
+[pipeline](docs/pipeline.md), [model](docs/model.md), [evaluation](docs/evaluation.md),
+[configuration](docs/configuration.md), [data](docs/data.md), [outputs](docs/outputs.md),
+[operations](docs/operations.md) and [development](docs/development.md).
 
 ## The model
 

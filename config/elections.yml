@@ -1,5 +1,8 @@
 # Election calendar and party configuration.
 # pm_party = party of the Prime Minister going into that election (used by the fundamentals prior).
+# forecast: true marks the election being forecast (exactly one). Polls are read from the Wikipedia article
+# "Opinion polling for the <year> New Zealand general election" for every election from anchor_election on;
+# add wikipedia_page: "<article title>" to an entry if its article has a different title.
 elections:
   - {year: 2008, date: 2008-11-08, pm_party: Labour}
   - {year: 2011, date: 2011-11-26, pm_party: National}

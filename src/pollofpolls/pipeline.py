@@ -18,9 +18,6 @@ from .forecast.simulate import apply_fundamentals, simulate_seats
 from .prep.marshal import Dataset, alr_inverse, build_dataset
 from .prep.polls_table import build_polls_table
 
-PAGE_YEARS = [2011, 2014, 2017, 2020, 2023, 2026]
-
-
 def _log(msg: str) -> None:
     print(f"[pollofpolls] {msg}", flush=True)
 
@@ -28,8 +25,8 @@ def _log(msg: str) -> None:
 # ----------------------------------------------------------------------------------------- fetch
 def fetch(cfg: Config, force: bool = False) -> list[Path]:
     paths = []
-    for y in PAGE_YEARS:
-        p = fetch_page(y, cfg.paths.raw, force=force)
+    for y, page in cfg.polling_pages:
+        p = fetch_page(y, cfg.paths.raw, force=force, page=page)
         _log(f"fetched {y}: {p.stat().st_size // 1024} KB")
         paths.append(p)
     return paths
@@ -38,7 +35,7 @@ def fetch(cfg: Config, force: bool = False) -> list[Path]:
 # ------------------------------------------------------------------------------------------ prep
 def load_polls(cfg: Config) -> list[Poll]:
     polls = []
-    for y in PAGE_YEARS:
+    for y, _ in cfg.polling_pages:
         p = cfg.paths.raw / f"{y}.html"
         if not p.exists():
             raise FileNotFoundError(f"{p} missing: run `pollofpolls fetch` first")
