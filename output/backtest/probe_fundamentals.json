@@ -1,0 +1,83 @@
+{
+ "note": "Fundamentals-prior probe: the Gaussian variant with and without Ellis's prior on the PM party's swing, forecasting 2023 eight weeks out with the polls available then. The prior is excluded from the ensemble.",
+ "cases": {
+  "fund": {
+   "target": 2023,
+   "horizon_weeks": 8,
+   "variant": "fund",
+   "cutoff": "2023-08-19",
+   "n_polls": 358,
+   "crps_pp": 2.612123197631313,
+   "mae_pp": 3.8544409126894816,
+   "coverage_90": 0.8571428571428571,
+   "coverage_50": 0.2857142857142857,
+   "forecast_mean": {
+    "National": 0.30616673827171326,
+    "Labour": 0.3806758224964142,
+    "Green": 0.08656290918588638,
+    "ACT": 0.11237248033285141,
+    "NZ First": 0.03963661566376686,
+    "Te Pāti Māori": 0.03277872875332832,
+    "TOP": 0.017249928787350655,
+    "Other": 0.024556521326303482
+   },
+   "outcome": {
+    "National": 0.3808,
+    "Labour": 0.2692,
+    "Green": 0.1161,
+    "ACT": 0.0864,
+    "NZ First": 0.0609,
+    "Te Pāti Māori": 0.0308,
+    "TOP": 0.0222,
+    "Other": 0.03359999999999996
+   },
+   "diagnostics": {
+    "n_divergent": 0,
+    "seconds": 401.1,
+    "mean_num_steps": 255.0,
+    "max_rhat": 1.013909701562654,
+    "min_ess_bulk": 186.40527635339657,
+    "n_params_summarised": 164
+   }
+  },
+  "gauss": {
+   "target": 2023,
+   "horizon_weeks": 8,
+   "variant": "gauss",
+   "cutoff": "2023-08-19",
+   "n_polls": 358,
+   "crps_pp": 1.4251832702077032,
+   "mae_pp": 2.354635313238417,
+   "coverage_90": 1.0,
+   "coverage_50": 0.42857142857142855,
+   "forecast_mean": {
+    "National": 0.33457842469215393,
+    "Labour": 0.30584385991096497,
+    "Green": 0.0978187844157219,
+    "ACT": 0.12973225116729736,
+    "NZ First": 0.04698773846030235,
+    "Te Pāti Māori": 0.035349711775779724,
+    "TOP": 0.020316343754529953,
+    "Other": 0.029372835531830788
+   },
+   "outcome": {
+    "National": 0.3808,
+    "Labour": 0.2692,
+    "Green": 0.1161,
+    "ACT": 0.0864,
+    "NZ First": 0.0609,
+    "Te Pāti Māori": 0.0308,
+    "TOP": 0.0222,
+    "Other": 0.03359999999999996
+   },
+   "diagnostics": {
+    "n_divergent": 0,
+    "seconds": 401.9,
+    "mean_num_steps": 255.0,
+    "max_rhat": 1.0156096525759233,
+    "min_ess_bulk": 179.91930997196687,
+    "n_params_summarised": 164
+   }
+  }
+ }
+}

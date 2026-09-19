@@ -30,8 +30,10 @@ takes roughly 5-10 minutes per variant on 4 CPU cores.
 **State.** Weekly vote intention for the tracked parties and "Other" is a vector of additive log-ratios
 against National. It follows a random walk with correlated innovations (LKJ prior), whose volatility is
 multiplied by a learned factor in the last eight weeks of each campaign. The official result of every past
-election pins the state exactly; between two results the path is sampled as a Brownian bridge, which
-removes the stiff direction that made the Stan version need `max_treedepth = 20`. The `heavy` variant adds
+election pins the state exactly: between two results the path is sampled as a Brownian bridge, and the
+probability of each election-to-election change is kept in the likelihood so that big swings between
+elections inform the volatility. This removes the stiff direction that made the Stan version need
+`max_treedepth = 20`. The `heavy` variant adds
 a multivariate Student-t shock scale per week, so news weeks can move every party at once.
 
 **Polls.** Each poll observes the state through three offsets, all on the logit scale with one value per
@@ -74,7 +76,10 @@ ensemble because its sequential filter makes each gradient slower on CPU than fu
 
 Every variant, and a faithful re-implementation of the 2023 NZ Herald model (`legacy`, see
 [`model/legacy.py`](src/pollofpolls/model/legacy.py)), is refitted using only the polls available 26, 8, 4
-and 1 weeks before the 2017, 2020 and 2023 elections and scored against the official result. Scores are on
+and 1 weeks before the 2017, 2020 and 2023 elections and scored against the official result. A poll counts
+as available once its fieldwork has ended and a typical publication delay for that pollster has passed
+(`publication_lag_days` in `config/pollsters.yml`), because Wikipedia records fieldwork dates, not release
+dates. Scores are on
 the vote-share scale over the tracked parties, excluding "Other": CRPS (the error of the whole forecast
 distribution, in percentage points), mean absolute error, and 50% and 90% interval coverage. A Brier score
 covers the seat-bloc lead. Variants are combined by **stacking on CRPS** (Yao, Vehtari, Simpson and Gelman
@@ -83,33 +88,33 @@ the other two, so its scores are out of sample.
 
 ### Backtest results
 
-Twelve cases: the 2017, 2020 and 2023 elections, each forecast 26, 8, 4 and 1 weeks out. Lower CRPS and error
-are better; coverage should match its nominal level.
+Twelve cases: the 2017, 2020 and 2023 elections, each forecast 26, 8, 4 and 1 weeks out with only the polls
+published by then. Lower CRPS and error are better; coverage should match its nominal level.
 
 | Model | CRPS (pp) | Mean abs. error (pp) | 90% coverage | 50% coverage |
 |---|---|---|---|---|
-| Stacked ensemble (published; out of sample) | 1.39 | 1.95 | 0.86 | 0.54 |
-| Ensemble + spread calibration (out of sample; not used) | 1.39 | 1.95 | 0.84 | 0.46 |
-| Equal-weight ensemble | 1.40 | 1.95 | 0.89 | 0.52 |
-| `gauss` | 1.37 | 1.91 | 0.90 | 0.54 |
-| `heavy` | 1.38 | 1.93 | 0.87 | 0.51 |
-| `base` (Dirichlet-multinomial) | 1.46 | 2.02 | 0.88 | 0.48 |
-| **2023 NZ Herald model** (replica) | 1.70 | 2.14 | 0.56 | 0.25 |
+| Stacked ensemble (published; out of sample) | 1.60 | 2.29 | 0.87 | 0.47 |
+| Ensemble + spread calibration (out of sample; not used) | 1.60 | 2.31 | 0.84 | 0.46 |
+| Equal-weight ensemble | 1.67 | 2.36 | 0.87 | 0.46 |
+| `gauss` | 1.58 | 2.27 | 0.89 | 0.47 |
+| `heavy` | 1.60 | 2.28 | 0.86 | 0.41 |
+| `base` (Dirichlet-multinomial) | 1.90 | 2.60 | 0.82 | 0.42 |
+| **2023 NZ Herald model** (replica) | 1.97 | 2.47 | 0.55 | 0.18 |
 
 CRPS in percentage points by weeks before the election, with 90% coverage in brackets:
 
 | Model | 26 weeks | 8 weeks | 4 weeks | 1 week |
 |---|---|---|---|---|
-| Stacked ensemble (published; out of sample) | 2.22 (0.74) | 1.78 (0.88) | 0.76 (0.93) | 0.81 (0.89) |
-| **2023 NZ Herald model** (replica) | 2.58 (0.53) | 1.94 (0.53) | 1.12 (0.67) | 1.14 (0.49) |
+| Stacked ensemble (published; out of sample) | 2.74 (0.69) | 1.75 (0.85) | 1.04 (1.00) | 0.87 (0.93) |
+| **2023 NZ Herald model** (replica) | 3.22 (0.58) | 2.05 (0.51) | 1.41 (0.63) | 1.19 (0.49) |
 
-* The published ensemble has **18% lower CRPS** than the 2023 model and beat it in **10 of 12** cases. It lost on 2023 at 26 weeks and at 1 week.
-* Its 90% intervals contained 86% of results against 56% for the 2023 model, whose fixed `n = 1000` and very smooth random walk made it overconfident at every horizon.
-* Point accuracy improved less than calibration: mean absolute error fell from 2.14 to 1.95 pp. Late swings such as Labour's rise after Jacinda Ardern became leader seven weeks before the 2017 election cannot be forecast from polls.
-* On the yes/no question of which bloc wins more seats, the 2023 model scored better (Brier 0.034 vs 0.139). It was confidently right in all three elections, partly because its smooth path barely reacted to the 2017 Labour surge. Three elections cannot separate that from luck.
-* The variants differ little from each other, and three elections cannot rank them reliably. Stacking weights fitted on two elections and tested on the third came out close to the equal-weight blend and slightly worse than `gauss` alone. The 2026 weights, fitted on all three, are `gauss` 0.59, `heavy` 0.41 and `base` 0.00.
-* Spread calibration (EMOS-style rescaling fitted on past elections) barely changed CRPS out of sample and made one-week intervals too narrow, so it is off (`forecast.calibrate_spread` in `config/model.yml`).
-* The fundamentals prior made forecasts worse. For 2023 at 8 weeks its CRPS was 2.62 pp against 1.54 without it (`output/backtest/probe_fund_2023_h8.json`), because it pulled Labour towards its 2020 landslide. It is excluded from the ensemble.
+* The published ensemble has **19% lower CRPS** than the 2023 model and beat it in **9 of 12** cases. The 2023 model was better only on the 2023 election at 1, 8 and 26 weeks out, by small margins.
+* The ensemble's 90% intervals contained 87% of results, against 55% for the 2023 model. The old model's fixed `n = 1000` and very smooth random walk made it overconfident at every horizon.
+* Point accuracy improved less than calibration: mean absolute error fell from 2.47 to 2.29 pp. Polls cannot foresee swings such as Labour's rise after Jacinda Ardern became leader seven weeks before the 2017 election.
+* On the yes/no question of which bloc wins more seats, the 2023 model scored better (Brier 0.041 vs 0.123). It was confidently right in all three elections, partly because its smooth path barely reacted to the 2017 Labour surge. Three elections cannot separate that from luck.
+* The Gaussian variants beat the Dirichlet-multinomial one, which stacking gave no weight. Weights fitted on two elections and tested on the third did about as well as the heavy-tailed variant alone and slightly worse than `gauss` alone; three elections cannot rank such close variants. The 2026 weights, fitted on all three, are `gauss` 0.60 and `heavy` 0.40.
+* Spread calibration (EMOS-style rescaling, evaluated with nested hold-outs) left CRPS unchanged and cut one-week coverage from 0.93 to 0.73, so it is off (`forecast.calibrate_spread` in `config/model.yml`).
+* The fundamentals prior made forecasts worse. Forecasting 2023 eight weeks out, CRPS was 2.61 pp with it and 1.43 pp without, because it pulled Labour up to 38.1% (without it: 30.6%; result: 26.9%). See `output/backtest/probe_fundamentals.json`.
 
 Full tables: `output/backtest/summary.csv`, `summary_by_horizon.csv`, `head_to_head.csv` and one file per case in `output/backtest/cases/`.
 
@@ -152,9 +157,13 @@ and stacking evaluated out of sample.
   [`data/reference/election_results.csv`](data/reference/election_results.csv) (Electoral Commission
   figures, plus 1993–2005 National and Labour results for the fundamentals prior). The Commission's CSV
   endpoints that the R pipeline used now sit behind a JavaScript challenge and cannot be fetched by a script.
-* **Pollsters.** Aliases, default sample sizes and method changes are in
+* **Pollsters.** Aliases, default sample sizes, publication delays and method changes are in
   [`config/pollsters.yml`](config/pollsters.yml). Sponsored releases such as "Labour–Talbot Mills" are
   excluded because they are published selectively.
+* **Alternative source.** [Nixinova/NZPolls](https://github.com/Nixinova/NZPolls) hand-transcribes the same
+  Wikipedia tables into YAML. On the 467 polls both sources share (September 2026), 3,604 of 3,632 party figures
+  were identical. It was not used as the input because it is updated about monthly and lagged the six most
+  recent polls, and because its `-00` unknown days break standard YAML parsers. It is a useful cross-check.
 
 ## Outputs
 
