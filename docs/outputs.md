@@ -4,7 +4,10 @@ Vote shares are proportions between 0 and 1 unless a column name ends in `_pp`, 
 Quantile columns `q05` to `q95` are the 5th, 25th, 50th, 75th and 95th percentiles. `when` is `election_day` for
 the forecast of 7 November or `now` for "if the election were held now".
 
-## output/ (committed by CI)
+## output/ (forecast outputs)
+
+Each forecast run generates these files. CI publishes fresh CSV and JSON downloads with the website; the copies
+checked into the repository are snapshots from earlier runs.
 
 ### summary.json
 

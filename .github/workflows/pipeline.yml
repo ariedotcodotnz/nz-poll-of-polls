@@ -154,13 +154,6 @@ jobs:
         with:
           version: ${{ env.QUARTO_VERSION }}
       - run: pollofpolls report
-      - name: Commit forecast outputs
-        run: |
-          git config user.name "poll-of-polls-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add output/*.csv output/*.json
-          git diff --cached --quiet || git commit -m "Update forecast $(date -u +%Y-%m-%d)"
-          git pull --rebase && git push
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

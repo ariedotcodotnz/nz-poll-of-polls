@@ -17,7 +17,7 @@ data/processed/
 quarto-*.tar.gz
 quarto-*.deb
 
-# rendered outputs (committed by CI only)
+# generated site and render artifacts
 site/
 website/.quarto/
 website/_variables.yml

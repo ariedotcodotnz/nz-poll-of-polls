@@ -11,7 +11,7 @@
 | `backtest-plan` | only on demand, with "Re-run the rolling-origin backtests" ticked | reads the backtest elections from `config/model.yml` |
 | `backtest` | after `backtest-plan` | one job per election, in parallel. Each starts from an empty `output/backtest/` and uploads only its own election's cases and fits. |
 | `backtest-aggregate` | after `backtest` | checks every configured election arrived, scores all cases, refits the stacking weights and commits `output/backtest/` |
-| `run` | after `test`, and after `backtest-aggregate` when that ran | fetch, prep, fit, forecast and report (Quarto builds the website); commits `output/*.csv` and `output/*.json`; uploads `site/` |
+| `run` | after `test`, and after `backtest-aggregate` when that ran | fetch, prep, fit, forecast and report (Quarto builds the website); uploads `site/`, including the forecast downloads |
 | `deploy` | after `run` | publishes `site/` to GitHub Pages |
 
 The Quarto version is pinned by `QUARTO_VERSION` at the top of the workflow.
@@ -19,7 +19,8 @@ The Quarto version is pinned by `QUARTO_VERSION` at the top of the workflow.
 Fits are cached between runs with `actions/cache`, keyed on the package source and `config/`. A fit is reused
 only if its fingerprint matches, so a run with no new polls finishes quickly.
 
-The bot's commits are pushed with the workflow's own token, which does not trigger another run.
+Forecast runs publish their generated files through the Pages artifact. Only manually requested backtest runs
+commit results and stacking weights. Those commits use the workflow's own token, which does not trigger another run.
 
 ### Publishing
 
@@ -28,7 +29,7 @@ Pages is enabled with Settings > Pages > Source set to "GitHub Actions", and the
 `https://<owner>.github.io/<repository>/`. No secrets are needed.
 
 The `deploy` job runs whenever `run` succeeds, including the usual case where the optional backtest jobs were
-skipped. Every run replaces the published site, so the page always matches the latest committed outputs.
+skipped. Every run replaces the published site, including its downloadable forecast files, with that run's outputs.
 
 ### Running the backtests
 
