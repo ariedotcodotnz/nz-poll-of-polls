@@ -15,7 +15,14 @@ bt_mcmc = {k: fmt(v) for k, v in site.cfg.model_cfg["backtest"]["mcmc"].items()}
 n_sims = fmt(site.cfg.model_cfg["seats"]["n_sims"])
 bop = site.cfg.electorates_cfg.get("balance_of_power", {})
 wider = site.wider_error_parties()
-tpm_none, tpm_none_independent = site.electorate_sweep_risk("Te Pāti Māori")
+tpm_sweep = site.electorate_sweep_risk("Te Pāti Māori")
+if tpm_sweep is None:
+    sweep_example = "The Te Pāti Māori electorate comparison is unavailable for this forecast."
+else:
+    tpm_none, tpm_none_independent = tpm_sweep
+    sweep_example = (f"With the current assumptions that leaves Te Pāti Māori a {tpm_none} chance of holding "
+                     f"none of its configured electorates, against {tpm_none_independent} if each seat were "
+                     "an independent coin.")
 blocs = ", and ".join(" + ".join(members) for members in bop.get("blocs", {}).values())
 pivots = " or ".join(bop.get("pivots", []))
 ```
@@ -167,9 +174,8 @@ For each of `{python} n_sims` simulated elections:
    probabilities are editorial judgements, and such judgements tend to be wrong for all of a party's electorates
    at once: Te Pāti Māori held no Māori electorate in 2017 and six in 2023. Each simulation therefore shifts the
    logit of every electorate of a party by one shared draw with standard deviation `electorate_group_sd`, so the
-   seats move together. With the current assumptions that leaves Te Pāti Māori a
-   `{python} tpm_none` chance of holding none of the seven Māori electorates, against
-   `{python} tpm_none_independent` if each seat were an independent coin.
+   seats move together. The intercept is calibrated to preserve the configured probabilities at `at_share`
+   after averaging over that shared shift. `{python} sweep_example`
 2. **Eligibility.** A party qualifies for list seats with at least 5% of the party vote or one electorate.
    "Other" never qualifies.
 3. **Allocation.** 120 seats, less one for each electorate won by an independent, are divided among qualifying

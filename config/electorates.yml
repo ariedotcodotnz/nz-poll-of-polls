@@ -13,7 +13,8 @@
 # proportional allocation, so those electorates are not listed unless the party could fall below 5%.
 # Editorial judgement about a party's electorates tends to be wrong for all of them at once: Te Pāti Māori
 # held no electorate in 2017 and six in 2023. Each simulation therefore shifts the logit of `p` for every
-# electorate of a party by one shared draw with this standard deviation. 0 makes each electorate independent.
+# electorate of a party by one shared draw with this standard deviation. The intercept is calibrated so the
+# marginal probabilities at at_share remain p and independent_p. 0 makes each electorate independent.
 electorate_group_sd: 0.8
 
 electorates:

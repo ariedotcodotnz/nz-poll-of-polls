@@ -91,6 +91,23 @@ def test_dataset_backtest_cutoff(prepped):
     assert ds.last_data_t < ds.target_t
 
 
+@pytest.mark.parametrize("anchor,target,cutoff", [
+    (2011, 2014, date(2014, 9, 13)),
+    (2023, 2026, date(2026, 9, 19)),
+])
+def test_error_scale_counts_anchor_results(prepped, root, anchor, target, cutoff):
+    _, table, results = prepped
+    cfg = Config(root)
+    cfg.elections_cfg["anchor_election"] = anchor
+    ds = build_dataset(table, results, cfg, target, cutoff=cutoff, lagged=True)
+    assert ds.election_years == []                        # only the anchor result is available
+    scale = dict(zip(ds.parties, ds.error_scale))
+    assert all(scale[p] == 1.0 for p in ["National", "Labour", "Green"])
+    assert scale["Te Pāti Māori"] == cfg.priors["minor_party_factor"]
+    if "TOP" in scale:
+        assert scale["TOP"] == cfg.priors["minor_party_factor"]
+
+
 def test_simulate_seats_shapes(prepped):
     cfg, table, results = prepped
     parties = ["National", "Labour", "Green", "ACT", "NZ First", "Te Pāti Māori", "TOP", "Other"]

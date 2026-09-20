@@ -53,9 +53,9 @@ def prob(x: float) -> str:
     These come from simulations, so a probability below the resolution of the simulation is "not seen", not
     "impossible": rare events are exactly where the model is least trustworthy, and saying 0% claims otherwise.
     """
-    if x < 0.005:
+    if x <= 0.005:
         return "<1%"
-    if x > 0.995:
+    if x >= 0.995:
         return ">99%"
     return f"{x * 100:.0f}%"
 
@@ -266,12 +266,14 @@ class Site:
         scale = self.summary.get("error_scale") or {}
         return and_join([p for p, x in scale.items() if x > 1]) or "no party"
 
-    def electorate_sweep_risk(self, party: str) -> tuple[str, str]:
-        """Chance the party holds none of its electorates: as simulated, and if each seat were an independent coin."""
+    def electorate_sweep_risk(self, party: str) -> tuple[str, str] | None:
+        """Chance of no electorate wins, shared and independent; unavailable without a tracked party and seats."""
         from ..forecast.simulate import simulate_electorates
 
-        k = self.parties.index(party)
         seats = [e for e in self.cfg.electorates_cfg["electorates"] if e["party"] == party]
+        if party not in self.parties or not seats:
+            return None
+        k = self.parties.index(party)
         shared = float(self.cfg.electorates_cfg.get("electorate_group_sd", 0.0))
         out = []
         for group_sd in (shared, 0.0):

@@ -82,7 +82,7 @@ combinations with TOP on either side, because TOP calls itself centrist and may 
 |---|---|
 | `blocs` | map of bloc name to its core parties, by default National + ACT and Labour + Green + Te Pāti Māori |
 | `pivots` | parties that could support either bloc, by default NZ First and TOP; any number |
-| `electorate_group_sd` | standard deviation of a shared logit shift applied to every electorate of a party (its `group`, the party name unless one is set), so its seats move together as they have historically. 0 makes each electorate independent |
+| `electorate_group_sd` | standard deviation of a shared logit shift applied to every electorate of a party (its `group`, the party name unless one is set), so its seats move together as they have historically. Intercepts are calibrated to preserve `p` and `independent_p` at `at_share`. 0 makes each electorate independent |
 
 For each bloc the website gives the chance of a majority alone, with each pivot party on its own, only with
 two or more pivots together (with two pivots, both), or not even then.

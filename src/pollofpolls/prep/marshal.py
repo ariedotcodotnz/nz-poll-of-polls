@@ -280,7 +280,8 @@ def build_dataset(polls: pl.DataFrame, results: dict[int, dict[str, float]], cfg
         shares = np.where(seen, y[late] / np.maximum(n[late, None], 1.0), np.nan)
         with np.errstate(invalid="ignore"):
             recent = np.nan_to_num(np.nanmean(shares, axis=0))
-    best_past = elections_pi.max(axis=0) if len(elections_t) else np.zeros(len(parties))
+    # The anchor is known history even when no later election has been completed.
+    best_past = np.vstack([pi0, elections_pi]).max(axis=0)
     error_scale = party_error_scale(parties, recent, best_past, cfg.priors)
     return Dataset(
         parties=parties, weeks=weeks, y=y, mask=mask, n=n, t=t, pollster_idx=pollster_idx,

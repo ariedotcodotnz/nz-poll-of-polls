@@ -2,19 +2,26 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
-from scipy import stats
+from scipy import optimize, special, stats
 
 from .seats import allocate_seats_matrix
 
 
-def _sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))
-
-
-def _logit(p):
-    p = np.clip(p, 1e-6, 1 - 1e-6)
-    return np.log(p / (1 - p))
+@lru_cache(maxsize=128)
+def _electorate_intercept(p: float, group_sd: float) -> float:
+    """Logit intercept whose win probability averages to p over the shared normal shift."""
+    base = float(special.logit(p))
+    if group_sd <= 0 or not np.isfinite(base):
+        return base                                  # includes certain wins and losses
+    # Gauss-Hermite quadrature integrates over the group effect, independently of the simulated draws.
+    nodes, weights = special.roots_hermitenorm(64)
+    shifts = group_sd * nodes
+    weights /= weights.sum()
+    return float(optimize.brentq(lambda a: weights @ special.expit(a + shifts) - p,
+                                 base - shifts[-1], base + shifts[-1]))
 
 
 def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: list[dict],
@@ -23,7 +30,8 @@ def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: lis
 
     ``group_sd`` is the standard deviation of a shared logit shift applied to every electorate of a party
     (its `group`, the party name unless one is configured). It makes a party win or lose its electorates
-    together, as they have historically, instead of each seat being an independent coin.
+    together, as they have historically, instead of each seat being an independent coin. Each intercept is
+    calibrated so the marginal win probability at ``at_share`` still equals the configured ``p``.
     """
     S, K = pi.shape
     idx = {p: i for i, p in enumerate(parties)}
@@ -42,8 +50,8 @@ def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: lis
         # three mutually exclusive outcomes: the party, an independent, or anyone else. At the reference vote
         # share they have exactly the configured probabilities; as the party's vote moves, its chance moves
         # on the logit scale and the independent keeps the same share of the remaining probability.
-        p_party = _sigmoid(_logit(p_ref) + shift[e.get("group", e["party"])]
-                           + e.get("slope", 0.0) * 100.0 * (pi[:, k] - e.get("at_share", pi[:, k].mean())))
+        p_party = special.expit(_electorate_intercept(p_ref, group_sd) + shift[e.get("group", e["party"])]
+                               + e.get("slope", 0.0) * 100.0 * (pi[:, k] - e.get("at_share", pi[:, k].mean())))
         p_ind = ind_ref * (1.0 - p_party) / (1.0 - p_ref) if ind_ref > 0 else np.zeros(S)
         u = rng.uniform(size=S)
         party_win = u < p_party

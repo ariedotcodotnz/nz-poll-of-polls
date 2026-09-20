@@ -5,6 +5,7 @@ import shutil
 
 import numpy as np
 import pytest
+import yaml
 
 from pollofpolls.config import Config
 from pollofpolls.model.fit import QUANTILES, FitResult
@@ -42,10 +43,11 @@ CANARY = "canary-7f3a9c"
 EVIL = "Evil&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;{{&lt; env POP_CANARY &gt;}}"
 
 
-@pytest.fixture(scope="module")
-def project(tmp_path_factory, root, fixtures):
+@pytest.fixture(scope="module", params=[2026, 2020])
+def project(tmp_path_factory, root, fixtures, request):
     """A copy of the project with the fixture pages, prepped and forecast from synthetic fits."""
-    tmp_path = tmp_path_factory.mktemp("e2e")
+    year = request.param
+    tmp_path = tmp_path_factory.mktemp(f"e2e_{year}")
     shutil.copytree(root / "config", tmp_path / "config")
     shutil.copytree(root / "data" / "reference", tmp_path / "data" / "reference")
     shutil.copytree(root / "website", tmp_path / "website",
@@ -60,16 +62,21 @@ def project(tmp_path_factory, root, fixtures):
     (raw / "2026.html").write_text(page.replace(">Talbot Mills<", f">{EVIL}<", 2), encoding="utf-8")
     cfg = Config(tmp_path)
     assert cfg.paths.root == tmp_path
+    for election in cfg.elections_cfg["elections"]:
+        election["forecast"] = election["year"] == year
+    (cfg.paths.config / "elections.yml").write_text(yaml.safe_dump(cfg.elections_cfg, allow_unicode=True))
 
     table, results = prep(cfg)
     assert (tmp_path / "data/processed/polls.parquet").exists()
-    ds = build_dataset(table, results, cfg, 2026)
-    ds.save(cfg.paths.processed / "dataset_2026")
+    ds = build_dataset(table, results, cfg, year)
+    if year == 2020:
+        assert "Te Pāti Māori" not in ds.parties          # the illustrative sweep must be optional
+    ds.save(cfg.paths.processed / f"dataset_{year}")
     weights = ensemble_weights(cfg)                        # no backtests here -> equal weights
     assert set(weights) == set(cfg.ensemble) and abs(sum(weights.values()) - 1) < 1e-9
     rng = np.random.default_rng(0)
     for v in weights:
-        _fake_fit(ds, v, rng).save(cfg.paths.processed / f"fit_{v}_2026")
+        _fake_fit(ds, v, rng).save(cfg.paths.processed / f"fit_{v}_{year}")
     return cfg, forecast(cfg)
 
 
@@ -110,7 +117,12 @@ def test_website(project, monkeypatch):
         for target in ("index.html", "model.html", "evaluation.html"):
             assert f'href="./{target}"' in html, (name, target)        # the shared navbar
     index = pages["index.html"]
-    assert "NZ Poll of Polls 2026" in index and "Evil" in index        # the pollster is shown, escaped
+    assert f"NZ Poll of Polls {cfg.forecast_election.year}" in index
+    if cfg.forecast_election.year == 2026:
+        assert "Evil" in index                                       # the pollster is shown, escaped
+        assert "chance of holding none of its configured electorates" in pages["model.html"]
+    else:
+        assert "electorate comparison is unavailable for this forecast" in pages["model.html"]
     assert "Who holds the balance of power" in index and "Needs NZ First and TOP" in index
     assert index.count("cdn.plot.ly/plotly-") == 1 and "mathjax" not in index.lower()
     assert index.count('class="plotly-graph-div"') >= 10
@@ -123,4 +135,4 @@ def test_website(project, monkeypatch):
     for f in ["voting_intention620.svg", "voting_intention375.svg", "voting_intention_all620.svg",
               "voting_intention_all375.svg", "election_night620.svg", "saturday375.svg"]:
         assert (cfg.paths.output / f).stat().st_size > 1000 and (site / f).exists(), f
-    assert json.loads((site / "summary.json").read_text())["election_date"] == "2026-11-07"
+    assert json.loads((site / "summary.json").read_text())["election_date"] == cfg.forecast_election.date.isoformat()

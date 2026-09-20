@@ -1,6 +1,7 @@
 """Regression tests for review findings: transition density, fit persistence, fingerprints, electorates."""
 import numpy as np
 import jax.numpy as jnp
+import pytest
 from scipy import stats
 
 import pollofpolls.model  # noqa: F401
@@ -48,19 +49,33 @@ def test_fingerprint_ignores_bytecode(tmp_path):
     assert fingerprint([pkg]) != before
 
 
-def test_electorate_marginals_match_config_at_reference_share():
+@pytest.mark.parametrize("group_sd", [0.0, 0.8])
+def test_electorate_marginals_match_config_at_reference_share(group_sd):
     parties = ["National", "Te Pāti Māori", "Other"]
     cfg = [{"electorate": "Te Tai Tonga", "party": "Te Pāti Māori", "p": 0.35, "at_share": 0.03, "slope": 0.4,
             "independent_p": 0.35}]
     S = 200_000
     pi = np.tile([0.5, 0.03, 0.47], (S, 1))
-    el, ind = simulate_electorates(pi, parties, cfg, np.random.default_rng(2))
+    el, ind = simulate_electorates(pi, parties, cfg, np.random.default_rng(2), group_sd=group_sd)
     assert abs(el[:, 1].mean() - 0.35) < 0.005
     assert abs(ind.mean() - 0.35) < 0.005
     assert not np.any((el[:, 1] > 0) & (ind > 0))          # mutually exclusive
     # when the party does better, its chance rises and the independent's falls
-    el2, ind2 = simulate_electorates(np.tile([0.5, 0.05, 0.45], (S, 1)), parties, cfg, np.random.default_rng(3))
+    el2, ind2 = simulate_electorates(np.tile([0.5, 0.05, 0.45], (S, 1)), parties, cfg,
+                                    np.random.default_rng(3), group_sd=group_sd)
     assert el2[:, 1].mean() > 0.5 and ind2.mean() < 0.35
+
+
+@pytest.mark.parametrize("p, independent_p", [(0.90, 0.05), (0.10, 0.80), (0.0, 1.0), (1.0, 0.0)])
+def test_grouped_electorate_marginals_away_from_half(p, independent_p):
+    cfg = [{"electorate": "Test seat", "party": "ACT", "p": p, "at_share": 0.09,
+            "independent_p": independent_p}]
+    pi = np.tile([0.5, 0.09, 0.41], (200_000, 1))
+    el, ind = simulate_electorates(pi, ["National", "ACT", "Other"], cfg,
+                                   np.random.default_rng(2), group_sd=0.8)
+    assert abs(el[:, 1].mean() - p) < 0.005
+    assert abs(ind.mean() - independent_p) < 0.005
+    assert not np.any((el[:, 1] > 0) & (ind > 0))
 
 
 # ---------------------------------------------------------------------------------- second review round

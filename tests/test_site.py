@@ -23,7 +23,9 @@ def test_probabilities_are_never_printed_as_0_or_100_percent():
     """A simulation that never produced an outcome has not shown it is impossible."""
     from pollofpolls.report.site import prob
     assert prob(0.0) == "<1%" and prob(0.0004) == "<1%" and prob(1.0) == ">99%" and prob(0.999) == ">99%"
+    assert prob(100 / 20_000) == "<1%" and prob(19_900 / 20_000) == ">99%"
     assert prob(0.5745) == "57%" and prob(0.006) == "1%"
+    assert prob(0.994) == "99%"
 
 
 def test_table_and_swatch():
@@ -47,6 +49,18 @@ def _project(tmp_path, root, summary: dict, seats: np.ndarray, parties: list[str
 
 PARTIES = ["National", "Labour", "Green", "ACT", "NZ First", "Te Pāti Māori", "TOP", "Other"]
 SEATS = np.array([[55, 35, 10, 8, 7, 3, 2, 0], [45, 40, 13, 8, 7, 3, 4, 0]])
+
+
+def test_electorate_sweep_is_unavailable_for_an_untracked_party(tmp_path, root):
+    parties = [p for p in PARTIES if p != "Te Pāti Māori"]
+    site = _project(tmp_path, root, {}, np.delete(SEATS, PARTIES.index("Te Pāti Māori"), axis=1), parties)
+    assert site.electorate_sweep_risk("Te Pāti Māori") is None
+
+
+def test_electorate_sweep_is_unavailable_without_configured_seats(tmp_path, root):
+    site = _project(tmp_path, root, {}, SEATS, PARTIES)
+    site.cfg.electorates_cfg["electorates"] = []
+    assert site.electorate_sweep_risk("Te Pāti Māori") is None
 
 
 def test_report_renders_summaries_from_before_the_balance_of_power(tmp_path, root):
