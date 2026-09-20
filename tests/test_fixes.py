@@ -141,6 +141,46 @@ def test_balance_of_power_does_not_call_every_pivot_necessary():
     assert r["p_needs_several"] == 1 and r["p_needs_all"] == 0
 
 
+def test_small_and_untested_parties_get_a_wider_election_day_error():
+    """Measured 2011-2023: parties polling under 8% missed their result by ~21% of their own support, against
+    ~8% for larger parties, so their election-day error scale is multiplied."""
+    from pollofpolls.prep.marshal import party_error_scale
+    parties = ["National", "Green", "TOP", "New Party", "Other"]
+    recent = np.array([0.29, 0.11, 0.068, 0.12, 0.03])      # support in the last polls before the cutoff
+    best_past = np.array([0.44, 0.11, 0.022, 0.0, 0.03])    # best result at a completed election
+    priors = {"minor_party_share": 0.08, "minor_party_factor": 2.5}
+    got = party_error_scale(parties, recent, best_past, priors)
+    assert list(got) == [1.0, 1.0, 2.5, 2.5, 1.0]           # small, and untested although polling 12%
+    assert list(party_error_scale(parties, recent, best_past, {})) == [1.0] * 5   # off unless configured
+
+
+def test_industry_error_keeps_its_scale_and_gains_tails():
+    """The election-day polling error is Student-t: same standard deviation, far more room for a bad miss."""
+    import numpyro
+
+    from pollofpolls.model.numpyro_model import industry_raw
+    with numpyro.handlers.seed(rng_seed=0):
+        normal = np.asarray(industry_raw("normal", None, (40000,)))
+        heavy = np.asarray(industry_raw("heavy", 4.0, (40000,)))
+    assert abs(normal.std() - 1.0) < 0.05 and abs(heavy.std() - 1.0) < 0.2
+    assert (np.abs(heavy) > 3).mean() > 3 * (np.abs(normal) > 3).mean()
+
+
+def test_a_party_wins_or_loses_its_electorates_together():
+    """Te Pāti Māori held no Māori electorate in 2017 and six in 2023: the seats are not independent coins."""
+    from pollofpolls.forecast.simulate import simulate_electorates
+    parties = ["National", "Te Pāti Māori", "Other"]
+    cfg = [{"electorate": f"seat {i}", "party": "Te Pāti Māori", "p": 0.6, "at_share": 0.03, "slope": 0.0}
+           for i in range(7)]
+    pi = np.tile([0.40, 0.03, 0.57], (40000, 1))
+    k = parties.index("Te Pāti Māori")
+    alone = simulate_electorates(pi, parties, cfg, np.random.default_rng(0))[0][:, k]
+    together = simulate_electorates(pi, parties, cfg, np.random.default_rng(0), group_sd=0.8)[0][:, k]
+    assert abs(alone.mean() - together.mean()) < 0.25       # the same seats on average
+    assert together.std() > 1.25 * alone.std()              # but a wider range
+    assert (together == 0).mean() > 3 * (alone == 0).mean() # losing every seat is no longer near-impossible
+
+
 def test_backtest_cases_are_rescored_when_the_blocs_change(tmp_path, monkeypatch):
     import json
     from types import SimpleNamespace

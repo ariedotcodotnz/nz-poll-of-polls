@@ -183,9 +183,10 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
              f"x{factor(spread, 1.0):.2f} for 'held now'")
 
     electorate_cfg = cfg.electorates_cfg["electorates"]
+    group_sd = float(cfg.electorates_cfg.get("electorate_group_sd", 0.0))
     coal_cfg = cfg.electorates_cfg["coalitions"]
-    sim_target = simulate_seats(pi_target, ds.parties, electorate_cfg, size, rng)
-    sim_now = simulate_seats(pi_now, ds.parties, electorate_cfg, size, rng)
+    sim_target = simulate_seats(pi_target, ds.parties, electorate_cfg, size, rng, group_sd=group_sd)
+    sim_now = simulate_seats(pi_now, ds.parties, electorate_cfg, size, rng, group_sd=group_sd)
 
     out = cfg.paths.output
     out.mkdir(parents=True, exist_ok=True)
@@ -259,6 +260,7 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
         "latest_poll": d.isoformat() if (d := latest["mid_date"].max()) else None,   # null before the term's first poll
         "pollsters_cycle": sorted(latest["pollster"].unique().to_list()),
         "parties": ds.parties,
+        "error_scale": {p: float(x) for p, x in zip(ds.parties, ds.error_scale)} if ds.error_scale is not None else {},
         "election_day": {r["party"]: r for r in share_rows(pi_target, "election_day")},
         "now": {r["party"]: r for r in share_rows(pi_now, "now")},
         "seats_election_day": party_seat_summary(sim_target["seats"], ds.parties),

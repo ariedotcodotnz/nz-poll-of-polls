@@ -47,6 +47,19 @@ def pct(x: float, digits: int = 0) -> str:
     return f"{x * 100:.{digits}f}%"
 
 
+def prob(x: float) -> str:
+    """A probability, never printed as 0% or 100%.
+
+    These come from simulations, so a probability below the resolution of the simulation is "not seen", not
+    "impossible": rare events are exactly where the model is least trustworthy, and saying 0% claims otherwise.
+    """
+    if x < 0.005:
+        return "<1%"
+    if x > 0.995:
+        return ">99%"
+    return f"{x * 100:.0f}%"
+
+
 def num(x: float | None, digits: int = 0) -> str:
     return "–" if x is None or math.isnan(x) else f"{x:.{digits}f}"
 
@@ -173,7 +186,7 @@ class Site:
 
     def tiles(self) -> str:
         """One tile per coalition: its chance of a majority on election day, and its seats."""
-        tiles = [f"::: {{.tile}}\n[{pct(c['p_majority'])}]{{.tile-value}}\n\n"
+        tiles = [f"::: {{.tile}}\n[{prob(c['p_majority'])}]{{.tile-value}}\n\n"
                  f"[{esc(c['name'])} majority]{{.tile-label}}\n\n"
                  f"[{num(c['seats_mean'])} seats ({num(c['seats_q05'])}–{num(c['seats_q95'])})]{{.tile-label}}\n:::"
                  for c in self.summary["coalitions_election_day"]]
@@ -191,17 +204,17 @@ class Site:
         header.append("Short even then")
         body = []
         for r in rows:
-            cells = [f"{esc(r['bloc'])} [({esc(', '.join(r['parties']))})]{{.muted}}", pct(r["p_alone"])]
-            cells += [pct(r["p_with"][p]) for p in pivots]
+            cells = [f"{esc(r['bloc'])} [({esc(', '.join(r['parties']))})]{{.muted}}", prob(r["p_alone"])]
+            cells += [prob(r["p_with"][p]) for p in pivots]
             if len(pivots) > 1:
-                cells.append(pct(r["p_needs_several"]))
-            body.append(cells + [pct(r["p_short"])])
+                cells.append(prob(r["p_needs_several"]))
+            body.append(cells + [prob(r["p_short"])])
         return table(header, body)
 
     def house_size(self) -> str:
         s = self.summary
         return (f"Expected House size {num(s['expected_house_size'], 1)} seats "
-                f"(chance of an overhang {pct(s['p_overhang'])}).\n")
+                f"(chance of an overhang {prob(s['p_overhang'])}).\n")
 
     def party_table(self) -> str:
         s = self.summary
@@ -210,14 +223,14 @@ class Site:
         for p in self.parties:
             e, n, st = s["election_day"][p], s["now"][p], seats[p]
             rows.append([f"{swatch(self.colours.get(p))}{esc(p)}", pct(n["mean"], 1), f"**{pct(e['mean'], 1)}**",
-                         f"{num(e['q05'] * 100, 1)}–{pct(e['q95'], 1)}", pct(e["p_over_5pct"]),
+                         f"{num(e['q05'] * 100, 1)}–{pct(e['q95'], 1)}", prob(e["p_over_5pct"]),
                          num(st["seats_mean"], 1), f"{num(st['seats_q05'])}–{num(st['seats_q95'])}"])
         return table(["Party", "Now", "Election day", "90% interval", "P(≥ 5%)", "Seats (mean)", "Seats 90%"], rows)
 
     def coalition_table(self) -> str:
         now = {c["name"]: c for c in self.summary["coalitions_now"]}
-        rows = [[esc(c["name"]), pct(now[c["name"]]["p_majority"]), num(now[c["name"]]["seats_mean"]),
-                 f"**{pct(c['p_majority'])}**", f"{num(c['seats_mean'])} ({num(c['seats_q05'])}–{num(c['seats_q95'])})"]
+        rows = [[esc(c["name"]), prob(now[c["name"]]["p_majority"]), num(now[c["name"]]["seats_mean"]),
+                 f"**{prob(c['p_majority'])}**", f"{num(c['seats_mean'])} ({num(c['seats_q05'])}–{num(c['seats_q95'])})"]
                 for c in self.summary["coalitions_election_day"]]
         return table(["Coalition", "Now: majority", "Now: seats", "Election day: majority", "Election day: seats"],
                      rows)
@@ -247,6 +260,25 @@ class Site:
         parts = [f"{esc(v)} (max R̂ {num(d.get('max_rhat'), 3)}, min ESS {num(d.get('min_ess_bulk'))}, "
                  f"divergences {d.get('n_divergent', '–')})" for v, d in self.summary.get("diagnostics", {}).items()]
         return "Model diagnostics: " + "; ".join(parts) + ".\n" if parts else ""
+
+    def wider_error_parties(self) -> str:
+        """The parties whose election-day error is widened because they are small or have never been elected."""
+        scale = self.summary.get("error_scale") or {}
+        return and_join([p for p, x in scale.items() if x > 1]) or "no party"
+
+    def electorate_sweep_risk(self, party: str) -> tuple[str, str]:
+        """Chance the party holds none of its electorates: as simulated, and if each seat were an independent coin."""
+        from ..forecast.simulate import simulate_electorates
+
+        k = self.parties.index(party)
+        seats = [e for e in self.cfg.electorates_cfg["electorates"] if e["party"] == party]
+        shared = float(self.cfg.electorates_cfg.get("electorate_group_sd", 0.0))
+        out = []
+        for group_sd in (shared, 0.0):
+            won = simulate_electorates(self.sims["pi_election"], self.parties, seats,
+                                       np.random.default_rng(11), group_sd=group_sd)[0][:, k]
+            out.append(prob(float((won == 0).mean())))
+        return out[0], out[1]
 
     # -------------------------------------------------------------------------------------------- figures
     def show(self, name: str, narrow: bool = False) -> None:

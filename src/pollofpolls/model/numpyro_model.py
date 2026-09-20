@@ -57,6 +57,7 @@ class ModelData:
     anchors_theta: jnp.ndarray  # (A, K-1)
     theta0: jnp.ndarray
     campaign: jnp.ndarray
+    error_scale: jnp.ndarray   # (K,) per-party multiplier on the election-day error scale
     target_t: int
     pm_party_idx: int
     pm_prev_share: float
@@ -76,6 +77,7 @@ class ModelData:
             n_pollsters=len(ds.pollsters), n_houses=len(ds.houses), n_cycles=ds.n_cycles,
             anchors_t=ds.anchors_t, anchors_theta=jnp.asarray(anchors), theta0=jnp.asarray(ds.theta0),
             campaign=jnp.asarray(ds.campaign), target_t=int(ds.target_t), pm_party_idx=int(ds.pm_party_idx),
+            error_scale=jnp.asarray(np.ones(ds.K) if ds.error_scale is None else ds.error_scale),
             pm_prev_share=float(ds.pm_prev_share), fund_mean=float(ds.fund_mean), fund_sd=float(ds.fund_sd),
         )
 
@@ -167,6 +169,19 @@ def sample_dynamics(d, variant: dict, priors: dict) -> jnp.ndarray:
     return bridge_path(W, V, d.anchors_t, d.anchors_theta)
 
 
+def industry_raw(name: str, df: float | None, shape: tuple[int, ...]) -> jnp.ndarray:
+    """Unit-variance draws for the industry-wide polling error.
+
+    With ``df`` the draws are Student-t rescaled to unit variance, so the scale keeps its meaning while rare,
+    large misses stay possible: an error of three standard deviations is about four times as likely as under a
+    normal. Four completed elections cannot rule such an election out, so the shape is a prior, stated here.
+    """
+    if not df:
+        return numpyro.sample(name, dist.Normal(0.0, 1.0).expand(list(shape)))
+    df = float(df)
+    return numpyro.sample(name, dist.StudentT(df, 0.0, 1.0).expand(list(shape))) * jnp.sqrt((df - 2.0) / df)
+
+
 def sample_offsets(d, variant: dict, priors: dict) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Sample house effects, industry error and design effects. Returns (delta (N, K-1), deff (P,))."""
     K = d.K
@@ -176,12 +191,13 @@ def sample_offsets(d, variant: dict, priors: dict) -> tuple[jnp.ndarray, jnp.nda
         hc_raw = numpyro.sample("house_cycle_raw", dist.Normal(0.0, 1.0).expand([d.n_pollsters * d.n_cycles, K]))
         p["house_cycle"] = numpyro.deterministic("house_cycle", hc_raw * hc_sd)
     if variant.get("industry_error"):
+        df = priors.get("industry_df")
         s_sd = numpyro.sample("industry_start_sd", dist.HalfNormal(priors["industry_sd_scale"]))
         e_sd = numpyro.sample("industry_end_sd", dist.HalfNormal(priors["industry_sd_scale"]))
-        s_raw = numpyro.sample("industry_start_raw", dist.Normal(0.0, 1.0).expand([d.n_cycles, K]))
-        e_raw = numpyro.sample("industry_end_raw", dist.Normal(0.0, 1.0).expand([d.n_cycles, K]))
-        p["industry_start"] = numpyro.deterministic("industry_start", s_raw * s_sd)
-        p["industry_end"] = numpyro.deterministic("industry_end", e_raw * e_sd)
+        s_raw = industry_raw("industry_start_raw", df, (d.n_cycles, K))
+        e_raw = industry_raw("industry_end_raw", df, (d.n_cycles, K))
+        p["industry_start"] = numpyro.deterministic("industry_start", s_raw * s_sd * d.error_scale)
+        p["industry_end"] = numpyro.deterministic("industry_end", e_raw * e_sd * d.error_scale)
     if variant.get("design_effect"):
         deff = jnp.full((d.n_pollsters,), float(variant["design_effect"]))
     else:

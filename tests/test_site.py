@@ -19,6 +19,13 @@ def test_escaped_text_is_inert_markdown():
     assert "\n" not in out and esc("Te Pāti Māori") == "Te Pāti Māori"
 
 
+def test_probabilities_are_never_printed_as_0_or_100_percent():
+    """A simulation that never produced an outcome has not shown it is impossible."""
+    from pollofpolls.report.site import prob
+    assert prob(0.0) == "<1%" and prob(0.0004) == "<1%" and prob(1.0) == ">99%" and prob(0.999) == ">99%"
+    assert prob(0.5745) == "57%" and prob(0.006) == "1%"
+
+
 def test_table_and_swatch():
     md = table(["Party", "Share"], [[f"{swatch('#1F5FBF')}National", "29.1%"]])
     assert md.startswith("::: {.table-scroll}\n| Party | Share |\n|:---|---:|\n") and md.endswith(":::\n")

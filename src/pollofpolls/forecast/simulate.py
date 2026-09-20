@@ -18,12 +18,19 @@ def _logit(p):
 
 
 def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: list[dict],
-                         rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
-    """Draw electorate wins for the configured seats. Returns (electorates (S,K), independent_seats (S,))."""
+                         rng: np.random.Generator, group_sd: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
+    """Draw electorate wins for the configured seats. Returns (electorates (S,K), independent_seats (S,)).
+
+    ``group_sd`` is the standard deviation of a shared logit shift applied to every electorate of a party
+    (its `group`, the party name unless one is configured). It makes a party win or lose its electorates
+    together, as they have historically, instead of each seat being an independent coin.
+    """
     S, K = pi.shape
     idx = {p: i for i, p in enumerate(parties)}
     electorates = np.zeros((S, K), dtype=int)
     independents = np.zeros(S, dtype=int)
+    groups = {e.get("group", e["party"]) for e in electorate_cfg}
+    shift = {g: (rng.normal(0.0, group_sd, size=S) if group_sd > 0 else np.zeros(S)) for g in sorted(groups)}
     for e in electorate_cfg:
         party = e["party"]
         if party not in idx:
@@ -35,7 +42,8 @@ def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: lis
         # three mutually exclusive outcomes: the party, an independent, or anyone else. At the reference vote
         # share they have exactly the configured probabilities; as the party's vote moves, its chance moves
         # on the logit scale and the independent keeps the same share of the remaining probability.
-        p_party = _sigmoid(_logit(p_ref) + e.get("slope", 0.0) * 100.0 * (pi[:, k] - e.get("at_share", pi[:, k].mean())))
+        p_party = _sigmoid(_logit(p_ref) + shift[e.get("group", e["party"])]
+                           + e.get("slope", 0.0) * 100.0 * (pi[:, k] - e.get("at_share", pi[:, k].mean())))
         p_ind = ind_ref * (1.0 - p_party) / (1.0 - p_ref) if ind_ref > 0 else np.zeros(S)
         u = rng.uniform(size=S)
         party_win = u < p_party
@@ -46,7 +54,7 @@ def simulate_electorates(pi: np.ndarray, parties: list[str], electorate_cfg: lis
 
 
 def simulate_seats(pi: np.ndarray, parties: list[str], electorate_cfg: list[dict], n_sims: int,
-                   rng: np.random.Generator, other_name: str = "Other") -> dict:
+                   rng: np.random.Generator, other_name: str = "Other", group_sd: float = 0.0) -> dict:
     """Seat simulation for election-day share draws ``pi`` (S, K). Returns arrays keyed by name."""
     S = pi.shape[0]
     take = rng.choice(S, size=min(n_sims, S), replace=n_sims > S) if n_sims != S else np.arange(S)
@@ -54,7 +62,7 @@ def simulate_seats(pi: np.ndarray, parties: list[str], electorate_cfg: list[dict
     votes = np.clip(pi, 0.0, None)
     if other_name in parties:
         votes[:, parties.index(other_name)] = 0.0   # "Other" is many parties, none of which qualifies
-    electorates, independents = simulate_electorates(pi, parties, electorate_cfg, rng)
+    electorates, independents = simulate_electorates(pi, parties, electorate_cfg, rng, group_sd)
     seats = allocate_seats_matrix(votes, electorates, independent_seats=independents)
     total = seats.sum(1) + independents
     return {"pi": pi, "seats": seats, "electorates": electorates, "independents": independents, "total": total}

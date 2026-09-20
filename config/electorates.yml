@@ -11,6 +11,11 @@
 #
 # Parties above 5% (National, Labour, Green in practice) winning electorates does not change the
 # proportional allocation, so those electorates are not listed unless the party could fall below 5%.
+# Editorial judgement about a party's electorates tends to be wrong for all of them at once: Te Pāti Māori
+# held no electorate in 2017 and six in 2023. Each simulation therefore shifts the logit of `p` for every
+# electorate of a party by one shared draw with this standard deviation. 0 makes each electorate independent.
+electorate_group_sd: 0.8
+
 electorates:
   - {electorate: Epsom,             party: ACT,            p: 0.90, at_share: 0.09, slope: 0.30}
   - {electorate: Auckland Central,  party: Green,          p: 0.55, at_share: 0.12, slope: 0.30}

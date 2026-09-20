@@ -183,7 +183,8 @@ print(site.downloads())
 Weekly support for `{python} len(site.parties) - 1` parties and "Other" follows a correlated random walk, pinned
 to the official results of the `{python} site.cfg.anchor_election`–`{python} site.last_result_year` elections.
 Each poll is read through its pollster's house effect and an industry-wide polling error. The
-{{< var election.year >}} election-day error cannot be seen yet, so it is drawn from past elections. Variants are
+{{< var election.year >}} election-day error cannot be seen yet, so it is drawn from past elections, with
+heavy tails and a wider spread for parties that are small or have never been elected. Variants are
 combined with weights from backtests, and seats follow the MMP rules. [How the model works](model.qmd).
 
 ```{python}
