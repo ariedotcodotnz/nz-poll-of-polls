@@ -1,17 +1,17 @@
 when,party,seats_mean,seats_q05,seats_q50,seats_q95,p_any_seats
-election_day,National,36.3267,29.0,36.0,44.0,1.0
-election_day,Labour,34.3734,25.0,34.0,45.0,1.0
-election_day,Green,14.1395,11.0,14.0,18.0,1.0
-election_day,ACT,11.2114,7.0,11.0,18.0,0.9894
-election_day,NZ First,14.2157,9.0,14.0,21.0,0.9963
-election_day,Te Pāti Māori,3.6686,2.0,4.0,6.0,0.96245
-election_day,TOP,6.24715,0.0,7.0,15.0,0.6374
+election_day,National,36.29425,29.0,36.0,44.0,1.0
+election_day,Labour,34.363,25.0,34.0,45.0,1.0
+election_day,Green,14.1612,11.0,14.0,18.0,0.9999
+election_day,ACT,11.2179,6.0,11.0,18.0,0.9881
+election_day,NZ First,14.2009,9.0,14.0,21.0,0.997
+election_day,Te Pāti Māori,3.6615,2.0,4.0,6.0,0.9623
+election_day,TOP,6.29265,0.0,7.0,15.0,0.64185
 election_day,Other,0.0,0.0,0.0,0.0,0.0
-now,National,36.5734,33.0,36.0,41.0,1.0
-now,Labour,34.2634,30.0,34.0,39.0,1.0
-now,Green,14.20955,12.0,14.0,16.0,1.0
-now,ACT,10.964,9.0,11.0,13.0,0.99995
-now,NZ First,14.0085,12.0,14.0,16.0,1.0
-now,Te Pāti Māori,3.569,2.0,3.0,6.0,0.9612
-now,TOP,6.59835,0.0,7.0,10.0,0.84535
+now,National,36.5691,33.0,36.0,41.0,1.0
+now,Labour,34.27495,30.0,34.0,39.0,1.0
+now,Green,14.2167,12.0,14.0,16.0,1.0
+now,ACT,10.9771,9.0,11.0,13.0,1.0
+now,NZ First,14.0175,12.0,14.0,17.0,1.0
+now,Te Pāti Māori,3.5733,2.0,3.0,6.0,0.96155
+now,TOP,6.55935,0.0,7.0,10.0,0.8396
 now,Other,0.0,0.0,0.0,0.0,0.0
