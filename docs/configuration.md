@@ -82,6 +82,7 @@ combinations with TOP on either side, because TOP calls itself centrist and may 
 |---|---|
 | `blocs` | map of bloc name to its core parties, by default National + ACT and Labour + Green + Te Pāti Māori |
 | `pivots` | parties that could support either bloc, by default NZ First and TOP; any number |
+| `electorate_group_sd` | standard deviation of a shared logit shift applied to every electorate of a party (its `group`, the party name unless one is set), so its seats move together as they have historically. 0 makes each electorate independent |
 
 For each bloc the website gives the chance of a majority alone, with each pivot party on its own, only with
 two or more pivots together (with two pivots, both), or not even then.
@@ -111,7 +112,7 @@ two or more pivots together (with two pivots, both), or not even then.
 | `backtest.variants`, `targets`, `horizons_weeks` | what the backtests run. GitHub Actions starts one job per election in `targets`. |
 | `backtest.blocs` | per target election, the `right` and `left` parties compared by the bloc-lead Brier score; others default to National + ACT against Labour + Green |
 | `backtest.mcmc` | MCMC settings that override `mcmc` in backtests |
-| `seats.n_sims` | number of simulated elections |
+| `seats.n_sims` | number of simulated elections; it also sets how fine a probability can be resolved |
 | `forecast.calibrate_spread` | apply the backtest-fitted spread calibration; off, see [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html) |
 
 Priors:
@@ -126,3 +127,5 @@ Priors:
 | `kappa_sd` | 0.3 | LogNormal sd of the campaign multiplier |
 | `design_effect_median`, `design_effect_sd` | 2, 0.4 | LogNormal prior on each pollster's design effect minus one |
 | `fundamentals.df` | 4 | degrees of freedom of the fundamentals prior; its mean and sd are estimated |
+| `industry_df` | 4 | degrees of freedom of the industry-wide error; `null` makes it normal. Four elections cannot bound a rare polling failure, so its tails are a stated prior |
+| `minor_party_share`, `minor_party_factor` | 0.08, 2.5 | a party polling under the first figure at the cutoff, or one that has never crossed the threshold at a completed election, has its election-day error scale multiplied by the second. Measured 2011–2023: parties polling under 8% missed their result by ~21% of their own support, against ~8% for larger parties |

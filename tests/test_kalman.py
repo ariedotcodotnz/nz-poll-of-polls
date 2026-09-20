@@ -32,7 +32,7 @@ def _kd():
                       logdet_base=jnp.asarray(logdet), n_obs=jnp.asarray(mask.sum(1).astype(float)),
                       t=jnp.asarray([p[0] for p in POLLS]), cycle_frac=jnp.zeros(N), elec_flag=jnp.asarray(elec_flag),
                       elec_y=jnp.asarray(elec_y),
-                      campaign=jnp.zeros(T), theta0=jnp.asarray(THETA0),
+                      campaign=jnp.zeros(T), theta0=jnp.asarray(THETA0), error_scale=jnp.ones(D + 1),
                       pollster_idx=jnp.zeros(N, dtype=int), house_idx=jnp.zeros(N, dtype=int),
                       cycle_idx=jnp.zeros(N, dtype=int), pc_idx=jnp.zeros(N, dtype=int),
                       n_pollsters=1, n_houses=1, n_cycles=1, target_t=T - 1, pm_party_idx=0, pm_prev_share=0.3)

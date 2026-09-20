@@ -108,6 +108,13 @@ Minister's party's previous result, which in 2020 was a landslide. It is exclude
 
 * **Three elections.** Twelve cases sound like more than they are: forecasts of the same election at different
   horizons share its surprises. Differences of a few percent in CRPS between variants are not meaningful.
+* **The tails are a prior, not a measurement.** Coverage measured on twelve cases can tell you whether the
+  middle of the distribution is about right; it cannot tell you whether a one-in-fifty outcome is one in fifty.
+  The election-day polling error is deliberately Student-t, and wider for small and untested parties, because
+  the record is too short to rule out a bad miss. Treat any probability below about 5% or above 95% as
+  "unlikely" or "likely" rather than as a number.
+* **Nothing here tests "if the election were held now."** No election is held now, so that figure can never be
+  scored directly. The nearest evidence is the one-week-out backtest.
 * **Electorates are not tested.** The bloc-lead score uses the electorates each party actually won, so it tests
   the vote forecast only. The {{< var election.year >}} electorate assumptions in `config/electorates.yml` are
   editorial.

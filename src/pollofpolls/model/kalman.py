@@ -47,6 +47,7 @@ class KalmanData:
     elec_flag: jnp.ndarray  # (T,)
     elec_y: jnp.ndarray     # (T, d)
     campaign: jnp.ndarray   # (T,)
+    error_scale: jnp.ndarray  # (K,) per-party multiplier on the election-day error scale
     theta0: jnp.ndarray     # (d,)
     pollster_idx: jnp.ndarray
     house_idx: jnp.ndarray
@@ -92,6 +93,7 @@ class KalmanData:
             t=jnp.asarray(ds.t), cycle_frac=jnp.asarray(ds.cycle_frac), elec_flag=jnp.asarray(elec_flag),
             elec_y=jnp.asarray(elec_y),
             campaign=jnp.asarray(ds.campaign), theta0=jnp.asarray(ds.theta0),
+            error_scale=jnp.asarray(np.ones(K) if ds.error_scale is None else ds.error_scale),
             pollster_idx=jnp.asarray(ds.pollster_idx), house_idx=jnp.asarray(ds.house_idx),
             cycle_idx=jnp.asarray(ds.cycle_idx), pc_idx=jnp.asarray(ds.pc_idx),
             n_pollsters=len(ds.pollsters), n_houses=len(ds.houses), n_cycles=ds.n_cycles,

@@ -51,6 +51,7 @@ class Dataset:
     fund_n: int
     cutoff: date
     last_data_t: int
+    error_scale: np.ndarray | None = None   # (K,) multiplier on the election-day error scale, per party
     poll_ids: list[str] = field(default_factory=list)
     mid_dates: list[date] = field(default_factory=list)
 
@@ -160,6 +161,29 @@ def fundamentals_prior(results: dict[int, dict[str, float]], pm_by_year: dict[in
     return float(s.mean()), float(np.sqrt(sd ** 2 + se ** 2)), int(s.size)
 
 
+def party_error_scale(parties: list[str], recent: np.ndarray, best_past: np.ndarray, priors: dict,
+                      threshold: float = 0.05, other: str = "Other") -> np.ndarray:
+    """How much wider the election-day error is for each party, as a multiplier on the common scale.
+
+    Polls miss small parties by much more in relative terms: over 2011-2023, parties polling under 8% in the
+    final fortnight missed their result by about 21% of their own support, against 8% for larger parties. A party
+    that has never cleared the threshold is treated the same way, however well it is polling, because how much of
+    its stated support turns into votes has never been tested. ``recent`` is each party's support in the last
+    polls before the cutoff and ``best_past`` its best result at a completed election, so neither looks ahead.
+    """
+    small = float(priors.get("minor_party_share", 0.0))
+    factor = float(priors.get("minor_party_factor", 1.0))
+    scale = np.ones(len(parties))
+    if factor == 1.0:
+        return scale
+    for k, party in enumerate(parties):
+        if party == other:                                  # a residual category, not a party
+            continue
+        if recent[k] < small or best_past[k] < threshold:
+            scale[k] = factor
+    return scale
+
+
 def build_dataset(polls: pl.DataFrame, results: dict[int, dict[str, float]], cfg: Config,
                   target_year: int, cutoff: date | None = None, lagged: bool = False) -> Dataset:
     """Marshal everything for forecasting ``target_year`` with the polls available on ``cutoff``.
@@ -249,6 +273,15 @@ def build_dataset(polls: pl.DataFrame, results: dict[int, dict[str, float]], cfg
     pm_prev_share = float(results[prev.year].get(target.pm_party, 0.0)) if prev.year in results else 0.0
     fund_mean, fund_sd, fund_n = fundamentals_prior(results, cfg.pm_by_year, target_year)
     last_data_t = int(t.max()) if N else 0
+    recent = np.zeros(len(parties))
+    if N:                                                   # support in the last eight weeks of polls
+        late = t >= max(0, last_data_t - 8)
+        seen = mask[late] & (n[late, None] > 0)
+        shares = np.where(seen, y[late] / np.maximum(n[late, None], 1.0), np.nan)
+        with np.errstate(invalid="ignore"):
+            recent = np.nan_to_num(np.nanmean(shares, axis=0))
+    best_past = elections_pi.max(axis=0) if len(elections_t) else np.zeros(len(parties))
+    error_scale = party_error_scale(parties, recent, best_past, cfg.priors)
     return Dataset(
         parties=parties, weeks=weeks, y=y, mask=mask, n=n, t=t, pollster_idx=pollster_idx,
         house_idx=house_idx, cycle_idx=cycle_idx, pc_idx=pc_idx, cycle_frac=cycle_frac, round_unit=round_unit,
@@ -257,5 +290,5 @@ def build_dataset(polls: pl.DataFrame, results: dict[int, dict[str, float]], cfg
         election_years=[e.year for e in anchored], theta0=alr(pi0), pi0=pi0, campaign=campaign,
         target_year=target_year, target_t=target_t, pm_party_idx=pidx.get(target.pm_party, 0),
         pm_prev_share=pm_prev_share, fund_mean=fund_mean, fund_sd=fund_sd, fund_n=fund_n,
-        cutoff=cutoff, last_data_t=last_data_t, poll_ids=poll_ids, mid_dates=mid_dates,
+        cutoff=cutoff, last_data_t=last_data_t, error_scale=error_scale, poll_ids=poll_ids, mid_dates=mid_dates,
     )

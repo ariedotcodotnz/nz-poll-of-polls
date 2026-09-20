@@ -14,6 +14,8 @@ mcmc = {k: fmt(v) for k, v in site.cfg.mcmc.items() if k in ("chains", "warmup",
 bt_mcmc = {k: fmt(v) for k, v in site.cfg.model_cfg["backtest"]["mcmc"].items()}
 n_sims = fmt(site.cfg.model_cfg["seats"]["n_sims"])
 bop = site.cfg.electorates_cfg.get("balance_of_power", {})
+wider = site.wider_error_parties()
+tpm_none, tpm_none_independent = site.electorate_sweep_risk("Te Pāti Māori")
 blocs = ", and ".join(" + ".join(members) for members in bop.get("blocs", {}).values())
 pivots = " or ".join(bop.get("pivots", []))
 ```
@@ -85,12 +87,28 @@ $$\delta_i = \beta_{h_i} + \gamma_{j_i, c_i} + (1 - f_i)\, s_{c_i} + f_i\, e_{c_
 |---|---|---|
 | $\beta_h$ | persistent house effect of a pollster, or of a pollster's method segment (Reid Research after its 2017 change) | $\mathcal{N}(0, 0.12^2)$ per party |
 | $\gamma_{j,c}$ | how pollster $j$ deviates from its persistent effect in term $c$ | $\mathcal{N}(0, \tau_\gamma^2)$, $\tau_\gamma \sim \text{HalfNormal}(0.05)$ |
-| $s_c$, $e_c$ | industry-wide error shared by all pollsters at the start and at the end of term $c$ | $\mathcal{N}(0, \tau_s^2)$, $\mathcal{N}(0, \tau_e^2)$, $\tau_s, \tau_e \sim \text{HalfNormal}(0.15)$ |
+| $s_c$, $e_c$ | industry-wide error shared by all pollsters at the start and at the end of term $c$ | $t_4(0, (m_k \tau_s)^2)$, $t_4(0, (m_k \tau_e)^2)$, $\tau_s, \tau_e \sim \text{HalfNormal}(0.15)$ |
 
 $f_i \in [0, 1]$ is how far through its term the poll was taken, from 0 at the previous election to 1 at the
 next. The first polls of a term identify $s_c$ against the previous result, and each result identifies $e_c$.
 For the term being forecast, $e_c$ has no result yet, so its posterior is its prior: a fresh election-day polling
 error with spread $\tau_e$ learned from past elections.
+
+Two things about that error are deliberate, because four completed elections cannot settle either.
+
+**The error is Student-t, not normal** (`priors.industry_df`), rescaled so $\tau$ still means its standard
+deviation. Four elections can estimate how big a typical polling miss is; they cannot bound how big a rare one
+could be, and polling industries do fail occasionally, as in Britain in 2015. Under this prior an error of three
+standard deviations is about four times as likely as under a normal.
+
+**Small and untested parties get a wider error**: $m_k$ multiplies the scale by `priors.minor_party_factor` for a
+party polling under `priors.minor_party_share` at the cutoff, or one that has never crossed the threshold at a
+completed election, and is 1 otherwise. The reason is measured, not assumed. Over 2011--2023, parties polling
+under 8% in the final fortnight missed their result by about 21% of their own support, against about 8% for
+larger parties; a single error scale on the log-ratio scale gives every party roughly the same relative error, so
+it understates the small ones by a factor of about two and a half. For {{< var election.year >}} the wider error
+applies to `{python} wider`. How much of a party's stated support turns into votes has never been tested for a
+party that has not been elected, which is the same argument in a different guise.
 
 The offsets enter on the log-ratio scale as $\Delta_{i,k} = \delta_{i,k} - \delta_{i,0}$. The expected poll
 shares are
@@ -145,7 +163,13 @@ For each of `{python} n_sims` simulated elections:
 1. **Electorates.** Each electorate in `config/electorates.yml` is won by the named party, an independent, or
    anyone else. The three outcomes are mutually exclusive and match the configured probabilities when the
    party's vote equals `at_share`. The party's chance moves on the logit scale by `slope` per percentage point
-   of simulated party vote, and the independent keeps the same share of the remaining probability.
+   of simulated party vote, and the independent keeps the same share of the remaining probability. These
+   probabilities are editorial judgements, and such judgements tend to be wrong for all of a party's electorates
+   at once: Te Pāti Māori held no Māori electorate in 2017 and six in 2023. Each simulation therefore shifts the
+   logit of every electorate of a party by one shared draw with standard deviation `electorate_group_sd`, so the
+   seats move together. With the current assumptions that leaves Te Pāti Māori a
+   `{python} tpm_none` chance of holding none of the seven Māori electorates, against
+   `{python} tpm_none_independent` if each seat were an independent coin.
 2. **Eligibility.** A party qualifies for list seats with at least 5% of the party vote or one electorate.
    "Other" never qualifies.
 3. **Allocation.** 120 seats, less one for each electorate won by an independent, are divided among qualifying
@@ -208,7 +232,8 @@ new model.
 | Random walk on raw proportions, which can go negative | Log-ratio random walk; shares stay on the simplex |
 | $n = 1000$ for every poll, standard error $\times \sqrt{2}$ | Real sample sizes, learned design effect per pollster, rounding error |
 | Constant house effects plus one method-change dummy | Persistent plus per-term house effects, method segments |
-| No industry-wide polling error | Start- and end-of-term industry error; fresh election-day error for 2026 |
+| No industry-wide polling error | Start- and end-of-term industry error; fresh election-day error for 2026, Student-t and wider for small or untested parties |
+| Electorate outcomes fixed by hand | Editorial electorate probabilities, with a shared error across a party's seats |
 | Constant volatility | Campaign multiplier; optional heavy-tailed weekly shocks |
 | Unreported parties recorded as 0% | Unreported parties treated as unobserved |
 | Stan, maximum tree depth 20 | NumPyro, bridge sampling, maximum tree depth 10 |

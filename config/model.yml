@@ -41,6 +41,11 @@ priors:
   design_effect_median: 2.0  # prior median of the per-pollster variance inflation
   design_effect_sd: 0.4      # LogNormal sd around that median
   fundamentals: {df: 4}      # mean and sd are estimated from past PM-party swings (no look-ahead)
+  industry_df: 4             # Student-t degrees of freedom for the industry-wide error; null for normal.
+                             # Four elections cannot bound a polling failure, so the tails are a stated prior.
+  minor_party_share: 0.08    # under this share, or never having cleared the threshold, a party's election-day
+  minor_party_factor: 2.5    # error scale is multiplied by this. Measured 2011-2023: parties polling under 8%
+                             # in the final fortnight missed by ~21% of their own support, against ~8% above it.
 
 election_obs_sd: 0.01        # only used by the Kalman variant (the other variants pin results exactly)
 
@@ -57,7 +62,7 @@ backtest:
     2023: {right: [National, ACT], left: [Labour, Green, Te Pāti Māori]}
 
 seats:
-  n_sims: 4000
+  n_sims: 20000            # simulations per forecast; sets how fine a probability can be resolved
 
 forecast:
   # Rescale the ensemble's spread by the horizon-dependent factor fitted in the backtests
