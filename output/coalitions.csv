@@ -1,19 +1,19 @@
 when,name,parties,seats_mean,seats_q05,seats_q95,p_majority
-election_day,National + ACT + NZ First,"National, ACT, NZ First",61.71305,53.0,71.0,0.5608
-election_day,National + ACT,"National, ACT",47.51215,40.0,55.0,0.00405
-election_day,National + NZ First,"National, NZ First",50.49515,42.0,60.0,0.0362
-election_day,National + ACT + TOP,"National, ACT, TOP",53.8048,45.0,63.0,0.0999
-election_day,Labour + Green + Te Pāti Māori,"Labour, Green, Te Pāti Māori",52.1857,43.0,62.0,0.0715
-election_day,Labour + Green,"Labour, Green",48.5242,39.0,58.0,0.0246
-election_day,Labour + Green + NZ First,"Labour, Green, NZ First",62.7251,54.0,72.0,0.6308
-election_day,Labour + Green + TOP,"Labour, Green, TOP",54.81685,45.0,64.0,0.13705
-election_day,Labour + Green + Te Pāti Māori + TOP,"Labour, Green, Te Pāti Māori, TOP",58.47835,49.0,68.0,0.33615
-now,National + ACT + NZ First,"National, ACT, NZ First",61.5637,57.0,67.0,0.5712
-now,National + ACT,"National, ACT",47.5462,44.0,52.0,0.00105
-now,National + NZ First,"National, NZ First",50.5866,46.0,55.0,0.0029
-now,National + ACT + TOP,"National, ACT, TOP",54.10555,49.0,58.0,0.0102
-now,Labour + Green + Te Pāti Māori,"Labour, Green, Te Pāti Māori",52.06495,47.0,57.0,0.0029
-now,Labour + Green,"Labour, Green",48.49165,44.0,53.0,0.00025
-now,Labour + Green + NZ First,"Labour, Green, NZ First",62.50915,58.0,68.0,0.7257
-now,Labour + Green + TOP,"Labour, Green, TOP",55.051,50.0,59.0,0.01585
-now,Labour + Green + Te Pāti Māori + TOP,"Labour, Green, Te Pāti Māori, TOP",58.6243,53.0,64.0,0.2288
+election_day,National + ACT + NZ First,"National, ACT, NZ First",61.70215,53.0,71.0,0.56025
+election_day,National + ACT,"National, ACT",47.5067,40.0,55.0,0.0039
+election_day,National + NZ First,"National, NZ First",50.47575,42.0,60.0,0.03585
+election_day,National + ACT + TOP,"National, ACT, TOP",53.7973,45.0,63.0,0.0997
+election_day,Labour + Green + Te Pāti Māori,"Labour, Green, Te Pāti Māori",52.1855,43.0,62.0,0.0709
+election_day,Labour + Green,"Labour, Green",48.50665,39.0,58.0,0.02445
+election_day,Labour + Green + NZ First,"Labour, Green, NZ First",62.7021,54.0,72.0,0.62975
+election_day,Labour + Green + TOP,"Labour, Green, TOP",54.79725,45.0,64.0,0.136
+election_day,Labour + Green + Te Pāti Māori + TOP,"Labour, Green, Te Pāti Māori, TOP",58.4761,49.0,68.0,0.3354
+now,National + ACT + NZ First,"National, ACT, NZ First",61.54795,57.0,67.0,0.5694
+now,National + ACT,"National, ACT",47.5337,44.0,52.0,0.00105
+now,National + NZ First,"National, NZ First",50.57395,46.0,55.0,0.00275
+now,National + ACT + TOP,"National, ACT, TOP",54.0915,49.0,58.0,0.0102
+now,Labour + Green + Te Pāti Māori,"Labour, Green, Te Pāti Māori",52.072,47.0,57.0,0.00285
+now,Labour + Green,"Labour, Green",48.47965,44.0,53.0,0.00025
+now,Labour + Green + NZ First,"Labour, Green, NZ First",62.4939,58.0,68.0,0.72375
+now,Labour + Green + TOP,"Labour, Green, TOP",55.03745,50.0,59.0,0.0159
+now,Labour + Green + Te Pāti Māori + TOP,"Labour, Green, Te Pāti Māori, TOP",58.6298,53.0,64.0,0.2292
