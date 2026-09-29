@@ -115,6 +115,11 @@ class Site:
         return list(self.summary["parties"])
 
     @cached_property
+    def assumptions(self):
+        """The checked editorial assumptions (config/electorates.yml) for the forecast's parties."""
+        return self.cfg.assumptions(self.parties)
+
+    @cached_property
     def trend(self) -> pl.DataFrame:
         return pl.read_csv(self.out / "trend.csv")
 
@@ -168,10 +173,9 @@ class Site:
         rows = (self.summary.get("balance_of_power") or {}).get(when)
         if rows and all("p_needs_several" in r for r in rows):
             return rows
-        bop = self.cfg.electorates_cfg.get("balance_of_power", {})
         key = {"election_day": "election", "now": "now"}[when]
         return balance_of_power(self.sims[f"seats_{key}"], self.parties, self.sims[f"total_{key}"],
-                                bop.get("blocs", {}), bop.get("pivots", []))
+                                self.assumptions.blocs, self.assumptions.pivots)
 
     # ---------------------------------------------------------------------------------------- forecast page
     def intro(self) -> str:
@@ -270,11 +274,11 @@ class Site:
         """Chance of no electorate wins, shared and independent; unavailable without a tracked party and seats."""
         from ..forecast.simulate import simulate_electorates
 
-        seats = [e for e in self.cfg.electorates_cfg["electorates"] if e["party"] == party]
+        seats = [e for e in self.assumptions.electorates if e["party"] == party]
         if party not in self.parties or not seats:
             return None
         k = self.parties.index(party)
-        shared = float(self.cfg.electorates_cfg.get("electorate_group_sd", 0.0))
+        shared = self.assumptions.group_sd
         out = []
         for group_sd in (shared, 0.0):
             won = simulate_electorates(self.sims["pi_election"], self.parties, seats,
@@ -313,7 +317,7 @@ class Site:
         ncol = 1 if narrow else 2
         polls = self.polls.filter(pl.col("mid_date") > self.anchor_date) if name.startswith("trend") else None
         parties = self.parties
-        coalitions = self.cfg.electorates_cfg["coalitions"]
+        coalitions = self.assumptions.coalitions
         build = {
             "all": lambda: charts.all_parties_figure(self.trend, self.election_dates, self.colours, self.term_start,
                                                      self.anchor_date, labels=not narrow),

@@ -1,0 +1,48 @@
+# Electorate boundaries, from the Representation Commission. Not editorial: change this file only after a
+# boundary review. Editorial assumptions about who wins which electorate are in electorates.yml.
+#
+# Each boundary set lists the electorates in use from `from_election` until the next set starts, and `replaced`
+# maps every electorate the review abolished to the electorates that took its area. The old and new sets sit
+# side by side, so an old name in electorates.yml gets an error naming its successors, and a seat's history can
+# be followed across a review. Names keep their macrons; matching ignores case and macrons.
+
+boundary_sets:
+  - name: 2025 boundary review
+    from_election: 2026
+    source: Representation Commission final report, 8 August 2025 (https://vote.nz/boundary-review)
+    general: [Auckland Central, Banks Peninsula, Botany, Christchurch Central, Christchurch East, Coromandel,
+              Dunedin, East Cape, East Coast Bays, Epsom, Glendene, Hamilton East, Hamilton West, Henderson,
+              Hutt South, Ilam, Invercargill, Kaikōura, Kaipara ki Mahurangi, Kapiti, Kenepuru, Māngere, Manurewa,
+              Maungakiekie, Mount Albert, Mount Maunganui, Mount Roskill, Napier, Nelson, New Plymouth, North Shore,
+              Northcote, Northland, Ōtāhuhu, Pakuranga, Palmerston North, Papakura, Port Waikato, Rangitata,
+              Rangitīkei, Remutaka, Rotorua, Selwyn, Southland, Taieri, Takanini, Tāmaki, Taranaki-King Country,
+              Taupō, Tauranga, Tukituki, Upper Harbour, Waikato, Waimakariri, Wairarapa, Waitākere, Waitaki,
+              Wellington Bays, Wellington North, West Coast-Tasman, Whanganui, Whangaparāoa, Whangārei, Wigram]
+    maori: [Hauraki-Waikato, Ikaroa-Rāwhiti, Tāmaki Makaurau, Te Tai Hauāuru, Te Tai Tokerau, Te Tai Tonga,
+            Waiariki]
+    replaced:                                        # abolished in 2025: where their area went
+      Wellington Central: [Wellington North, Wellington Bays]   # Brooklyn and Mount Cook to Wellington Bays
+      Rongotai: [Wellington Bays]
+      Ōhāriu: [Wellington North, Kenepuru, Hutt South]          # Khandallah, Ngaio, Wadestown; Tawa; Newlands
+      Mana: [Kenepuru, Kapiti]                                   # southern and northern Porirua
+      Ōtaki: [Kapiti]
+      Te Atatū: [Henderson, Glendene]
+      Kelston: [Glendene, Waitākere]
+      New Lynn: [Waitākere, Glendene]
+      Panmure-Ōtāhuhu: [Ōtāhuhu]
+      East Coast: [East Cape]                                    # renamed
+      Bay of Plenty: [Mount Maunganui]                           # renamed, gaining Mount Maunganui
+
+  - name: 2019-20 boundary review
+    from_election: 2020
+    source: Representation Commission final report, April 2020
+    general: [Auckland Central, Banks Peninsula, Bay of Plenty, Botany, Christchurch Central, Christchurch East,
+              Coromandel, Dunedin, East Coast, East Coast Bays, Epsom, Hamilton East, Hamilton West, Hutt South,
+              Ilam, Invercargill, Kaikōura, Kaipara ki Mahurangi, Kelston, Mana, Māngere, Manurewa, Maungakiekie,
+              Mount Albert, Mount Roskill, Napier, Nelson, New Lynn, New Plymouth, North Shore, Northcote,
+              Northland, Ōhāriu, Ōtaki, Pakuranga, Palmerston North, Panmure-Ōtāhuhu, Papakura, Port Waikato,
+              Rangitata, Rangitīkei, Remutaka, Rongotai, Rotorua, Selwyn, Southland, Taieri, Takanini, Tāmaki,
+              Taranaki-King Country, Taupō, Tauranga, Te Atatū, Tukituki, Upper Harbour, Waikato, Waimakariri,
+              Wairarapa, Waitaki, Wellington Central, West Coast-Tasman, Whanganui, Whangaparāoa, Whangārei, Wigram]
+    maori: [Hauraki-Waikato, Ikaroa-Rāwhiti, Tāmaki Makaurau, Te Tai Hauāuru, Te Tai Tokerau, Te Tai Tonga,
+            Waiariki]

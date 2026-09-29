@@ -1,37 +1,131 @@
-# Electorate assumptions for the 2026 seat simulation. These are editorial assumptions, not model output.
+# EDITORIAL ASSUMPTIONS for the 2026 seat simulation
+# ===================================================
+# These are judgements, not model output: party-vote polls say nothing about who wins a particular
+# electorate. Edit them as the campaign goes on, then check the file and see what it now implies with
 #
-# For each electorate that matters to the seat allocation (a sub-5% party winning it, or a candidate
-# outside the party lists winning it) we give the probability `p` that `party` wins it when the party's
-# nationwide vote equals `at_share`. The logit of p shifts by `slope` per percentage point that the
-# simulated party vote differs from at_share, so electorate wins move with the party vote.
-# `independent_p` is the probability the seat goes to an independent / non-list candidate, which removes
-# one seat from the 120-seat proportional pool (Electoral Act 1993). The party, the independent and everyone
-# else are mutually exclusive: at `at_share` they have probabilities p, independent_p and 1 - p - independent_p;
-# as the party's vote moves, the independent keeps the same share of the probability the party does not take.
+#     pollofpolls electorates                     # checks this file and previews each assumption
+#     pollofpolls forecast && pollofpolls report  # publishes the change; no refit is needed
 #
-# Parties above 5% (National, Labour, Green in practice) winning electorates does not change the
-# proportional allocation, so those electorates are not listed unless the party could fall below 5%.
-# Editorial judgement about a party's electorates tends to be wrong for all of them at once: Te Pāti Māori
-# held no electorate in 2017 and six in 2023. Each simulation therefore shifts the logit of `p` for every
-# electorate of a party by one shared draw with this standard deviation. The intercept is calibrated so the
-# marginal probabilities at at_share remain p and independent_p. 0 makes each electorate independent.
+# docs/electorates.md walks through every kind of change with examples. Names match ignoring case and macrons
+# ("Te Pati Maori" works). Electorate names must be ones in use at the 2026 election (config/boundaries.yml):
+# a name abolished at the 2025 boundary review gets an error naming the electorates that replaced it.
+
+# WHICH ELECTORATES TO LIST
+# Only seats that can change the number of seats each party gets:
+#  - one that a party below the 5% threshold could win: winning any electorate earns it list seats in
+#    proportion to its party vote, and electorates beyond that are overhang;
+#  - one that a candidate outside the tracked parties could win (an independent, or a party too small to be
+#    tracked, such as the Te Tai Tokerau Party): that seat then comes out of the 120 shared proportionally.
+# A party well above 5% winning an electorate changes nothing, so those seats need no entry.
+
+# HOW WRONG THE JUDGEMENT CAN BE
+# Judgement about a party's electorates tends to be wrong for all of them at once: Te Pāti Māori held no
+# electorate in 2017 and six in 2023. Each simulation shifts every electorate of a party (its `group`) by one
+# shared draw with this standard deviation, on the logit scale. The average chance of each seat stays the `p`
+# you set. 0 treats every seat as an independent coin.
 electorate_group_sd: 0.8
 
-electorates:
-  - {electorate: Epsom,             party: ACT,            p: 0.90, at_share: 0.09, slope: 0.30}
-  - {electorate: Auckland Central,  party: Green,          p: 0.55, at_share: 0.12, slope: 0.30}
-  - {electorate: Wellington Central, party: Green,         p: 0.55, at_share: 0.12, slope: 0.30}
-  - {electorate: Rongotai,          party: Green,          p: 0.50, at_share: 0.12, slope: 0.30}
-  - {electorate: Waiariki,          party: Te Pāti Māori,  p: 0.80, at_share: 0.03, slope: 0.40}
-  - {electorate: Te Tai Hauāuru,    party: Te Pāti Māori,  p: 0.65, at_share: 0.03, slope: 0.40}
-  - {electorate: Hauraki-Waikato,   party: Te Pāti Māori,  p: 0.65, at_share: 0.03, slope: 0.40}
-  - {electorate: Tāmaki Makaurau,   party: Te Pāti Māori,  p: 0.60, at_share: 0.03, slope: 0.40}
-  - {electorate: Te Tai Tonga,      party: Te Pāti Māori,  p: 0.35, at_share: 0.03, slope: 0.40, independent_p: 0.35}   # Tākuta Ferris (independent)
-  - {electorate: Te Tai Tokerau,    party: Te Pāti Māori,  p: 0.35, at_share: 0.03, slope: 0.40, independent_p: 0.35}   # Mariameno Kapa-Kingi (Te Tai Tokerau Party)
-  - {electorate: Ikaroa-Rāwhiti,    party: Te Pāti Māori,  p: 0.30, at_share: 0.03, slope: 0.40}
+# DEFAULTS FOR EACH PARTY'S ELECTORATES (an electorate entry can override any of them)
+#   at_share  the party's national vote the `p` values below were judged at. When the simulated vote is higher
+#             or lower, each seat's chance moves with it.
+#   slope     how fast it moves: the change in log-odds per percentage point of national vote. 0.4 turns an even
+#             chance into 60% for one extra point; 0 makes the seat ignore the national vote. Default 0.3.
+#   group     seats that share one error; defaults to the party.
+party_defaults:
+  Te Pāti Māori: {at_share: 0.022, slope: 0.40}   # its national poll average when the values were set, Sep 2026
+  ACT: {at_share: 0.085}
+  Green: {at_share: 0.115}
 
-# Coalition scenarios reported. Majority is computed per simulation from the simulated House size.
-# TOP (The Opportunities Party) calls itself centrist, so combinations with either side are shown.
+# THE ELECTORATES
+#   electorate     its name at the 2026 boundaries
+#   party          the tracked party this seat is modelled for
+#   p              the chance that party wins it, at the party's at_share
+#   independent_p  optional: the chance a candidate outside the tracked parties wins it; the remaining
+#                  1 - p - independent_p goes to anyone else. When the party's chance moves with its vote, the
+#                  independent keeps the same share of what the party does not take.
+#   note, source, updated   your own record of why; the model ignores them
+electorates:
+
+  # --- ACT ------------------------------------------------------------------------------------------------
+  - electorate: Epsom
+    party: ACT
+    p: 0.90
+    note: David Seymour, ACT leader, has held it since 2014. National stands Paul Goldsmith (list 6). The
+      2025 review kept Balmoral in Epsom after objections.
+    source: Wikipedia, Candidates in the 2026 New Zealand general election by electorate; The Spinoff, 11 Aug 2025
+    updated: 2026-09-29
+
+  # --- Te Pāti Māori --------------------------------------------------------------------------------------
+  # Māori-roll party vote, Curia for Whakaata Māori, 29 Aug-10 Sep 2026 (n=1,000): Te Pāti Māori 29%, Labour
+  # 27%, Green 16%, NZ First 6%, Te Tai Tokerau Party 4%. Electorate polls in the Māori seats underestimated
+  # Te Pāti Māori in 2023, when it won six of the seven.
+  - electorate: Waiariki
+    party: Te Pāti Māori
+    p: 0.85
+    note: Rawiri Waititi, co-leader, has held it since 2020.
+    updated: 2026-09-29
+  - electorate: Te Tai Hauāuru
+    party: Te Pāti Māori
+    p: 0.70
+    note: Debbie Ngarewa-Packer, co-leader, won it from Labour in 2023.
+    updated: 2026-09-29
+  - electorate: Hauraki-Waikato
+    party: Te Pāti Māori
+    p: 0.70
+    note: Hana-Rawhiti Maipi-Clarke won it from Labour's Nanaia Mahuta in 2023.
+    updated: 2026-09-29
+  - electorate: Tāmaki Makaurau
+    party: Te Pāti Māori
+    p: 0.70
+    note: Oriini Kaipara held it for Te Pāti Māori by a landslide at the 6 September 2025 by-election, after
+      the death of Takutai Tarsh Kemp.
+    updated: 2026-09-29
+  - electorate: Te Tai Tokerau
+    party: Te Pāti Māori
+    p: 0.30
+    independent_p: 0.35
+    note: The 2023 winner, Mariameno Kapa-Kingi, left to found the Te Tai Tokerau Party (May 2026) and stands for
+      it; Te Pāti Māori stands Aperahama Edwards. Her party is too small to be tracked, so she is the
+      `independent_p`. No electorate poll yet.
+    updated: 2026-09-29
+  - electorate: Te Tai Tonga
+    party: Te Pāti Māori
+    p: 0.15
+    independent_p: 0.08
+    note: Tākuta Ferris won it for Te Pāti Māori in 2023 and stands as an independent. Electorate poll, Curia for
+      Whakaata Māori, 14-24 Sep 2026 (n=500, ±4.5%) - Mananui Ramsden (Labour) 30%, Lisa Marie Murch (Te Pāti
+      Māori) 17%, Lisa Te Morenga (Green) 16%, Ferris 15%.
+    source: Te Ao Māori News, 29 Sep 2026
+    updated: 2026-09-29
+  - electorate: Ikaroa-Rāwhiti
+    party: Te Pāti Māori
+    p: 0.40
+    note: Labour's Cushla Tangaere-Manuel held it narrowly against Meka Whaitiri in 2023. Labour's Māori-roll party
+      vote is well down on 2023 in the Curia poll above. No electorate poll yet.
+    updated: 2026-09-29
+
+  # --- Green: above 5% in effectively every simulation, so these seats matter only in the far tail --------
+  - electorate: Auckland Central
+    party: Green
+    p: 0.65
+    note: Chlöe Swarbrick, co-leader, has held it since 2020.
+    updated: 2026-09-29
+  - electorate: Wellington Bays
+    party: Green
+    p: 0.60
+    note: Replaces Rongotai (Julie Anne Genter, Green, 2023) and gains Brooklyn and Mount Cook from Wellington
+      Central.
+    updated: 2026-09-29
+  - electorate: Wellington North
+    party: Green
+    p: 0.35
+    note: Replaces Wellington Central (Tamatha Paul, Green, 2023) but moves north into Khandallah, Wadestown and
+      Ngaio, which lean away from the Greens.
+    updated: 2026-09-29
+
+# COALITIONS REPORTED
+# Any combination of tracked parties; a majority is judged per simulation against the simulated House size.
+# TOP calls itself centrist, so combinations with either side are shown.
 coalitions:
   - {name: "National + ACT + NZ First", parties: [National, ACT, NZ First]}
   - {name: "National + ACT",            parties: [National, ACT]}
@@ -43,8 +137,10 @@ coalitions:
   - {name: "Labour + Green + TOP",      parties: [Labour, Green, TOP]}
   - {name: "Labour + Green + Te Pāti Māori + TOP", parties: [Labour, Green, Te Pāti Māori, TOP]}
 
-# Balance of power: for each bloc, the chance it has a majority alone, with one pivot party, only with all of
-# them, or not even then. Pivots are parties that could plausibly support either bloc.
+# BALANCE OF POWER
+# For each bloc: the chance of a majority alone, with each pivot party on its own, only with two or more pivots
+# together, or not even then. Pivots are parties that could plausibly support either bloc; a pivot cannot also
+# be in a bloc.
 balance_of_power:
   blocs:
     Right bloc: [National, ACT]

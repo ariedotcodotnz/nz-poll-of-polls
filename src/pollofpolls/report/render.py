@@ -29,7 +29,7 @@ def draw_static_charts(site: Site) -> None:
     charts.all_parties_svg(site.trend, dates, colours, out / "voting_intention_all620.svg", 6.2, 4.2, site.term_start)
     charts.all_parties_svg(site.trend, dates, colours, out / "voting_intention_all375.svg", 3.75, 4.6,
                            site.term_start, labels=False)
-    coalitions, sims, parties = site.cfg.electorates_cfg["coalitions"], site.sims, site.parties
+    coalitions, sims, parties = site.assumptions.coalitions, site.sims, site.parties
     for when, name in (("election", "election_night"), ("now", "saturday")):
         for ncol, width, height, size in ((2, 6.2, 5, 620), (1, 3.75, 10, 375)):
             charts.coalition_svg(sims[f"seats_{when}"], sims[f"total_{when}"], parties, coalitions,

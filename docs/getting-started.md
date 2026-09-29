@@ -76,6 +76,7 @@ and open <http://localhost:8000>. The site has the forecast and two pages on met
 |---|---|
 | Refresh with new polls | `pollofpolls all` |
 | Refit one variant from scratch | `pollofpolls fit --variants gauss --force` |
+| Change an electorate assumption | edit `config/electorates.yml`, then `pollofpolls electorates` ([guide](electorates.md)) |
 | Rebuild the website only | `pollofpolls report` |
 | Edit a website page with live reload | `quarto preview website` |
 | Re-run the backtests | `pollofpolls backtest` (slow; see [Operations](operations.md#running-the-backtests)) |

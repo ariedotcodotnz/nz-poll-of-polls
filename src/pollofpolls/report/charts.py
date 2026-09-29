@@ -171,7 +171,7 @@ def seats_figure(seats: np.ndarray, total: np.ndarray, parties: list[str], coali
     fig.update_annotations(font_size=12)
     fig.update_layout(height=(240 if ncol > 1 else 200) * nrow, margin=dict(l=30, r=10, t=50, b=30),
                       plot_bgcolor="white", paper_bgcolor="white", bargap=0.05, font=FONT)
-    return fig
+    return _no_zoom(fig)
 
 
 def house_effects_figure(house: pl.DataFrame, colours: dict[str, str]) -> go.Figure:
@@ -190,6 +190,15 @@ def house_effects_figure(house: pl.DataFrame, colours: dict[str, str]) -> go.Fig
     fig.update_layout(barmode="group", height=460, margin=dict(l=30, r=10, t=30, b=120), plot_bgcolor="white",
                       paper_bgcolor="white", yaxis=dict(ticksuffix=" pp", gridcolor="#eee", zeroline=True),
                       legend=dict(orientation="h", y=-0.45), font=FONT)
+    return _no_zoom(fig)
+
+
+def _no_zoom(fig: go.Figure) -> go.Figure:
+    """Fix every axis and turn off dragging: zooming a distribution or a bar chart shows nothing new, and on a
+    phone a drag that starts on the chart should scroll the page. Hover still works."""
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    fig.update_layout(dragmode=False)
     return fig
 
 

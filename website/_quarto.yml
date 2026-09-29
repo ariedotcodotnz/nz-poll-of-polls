@@ -45,7 +45,7 @@ format:
     anchor-sections: true
     smooth-scroll: true
     include-in-header: _partials/fonts.html
-    include-after-body: _partials/resize-charts.html
+    include-after-body: _partials/charts.html
 
 execute:
   echo: false

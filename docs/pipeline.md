@@ -8,9 +8,10 @@ so stages can be rerun independently.
 | `fetch` | Wikipedia | `data/raw/wikipedia/<year>.html`, `<year>.meta.json` |
 | `prep` | raw pages, `data/reference/` | `data/processed/polls.parquet`, `results.json` |
 | `fit` | processed data, `config/` | `data/processed/dataset_<year>.*`, `fit_<variant>_<year>.*` |
-| `forecast` | fits, `output/backtest/stacking.json`, `config/electorates.yml` | `output/*.csv`, `summary.json`, `seat_sims.npz` |
+| `forecast` | fits, `output/backtest/stacking.json`, `config/electorates.yml`, `config/boundaries.yml` | `output/*.csv`, `summary.json`, `seat_sims.npz` |
 | `report` | `output/`, `polls.parquet` | `output/*.svg`, `site/` |
 | `backtest` | processed data | `output/backtest/` |
+| `electorates` | `config/electorates.yml`, `config/boundaries.yml`, the latest `seat_sims.npz` | nothing: checks the editorial assumptions and prints what each implies |
 
 `pollofpolls all` runs fetch, prep, fit, forecast and report in order.
 
@@ -48,7 +49,9 @@ file is missing or does not cover every candidate in `ensemble`, all candidates 
 
 ## forecast
 
-Mixes the fitted variants with their stacking weights and simulates election-day and "held now" outcomes:
+Checks the editorial assumptions in `config/electorates.yml` first and stops, saying what to change, if
+anything is wrong. Then mixes the fitted variants with their stacking weights and simulates election-day and
+"held now" outcomes:
 4,000 draws of vote shares, electorate wins from `config/electorates.yml`, Sainte-Laguë seat allocation and
 the coalition table. The weekly trend and the seat simulation use the same weighted mixture. If
 `forecast.calibrate_spread` is on, the spread is rescaled first (see [How it is tested](https://ariedotcodotnz.github.io/nz-poll-of-polls/evaluation.html)).

@@ -19,6 +19,7 @@
 | `model/fit.py` | running NUTS, diagnostics, saving and loading fits |
 | `forecast/seats.py`, `forecast/simulate.py`, `forecast/coalitions.py` | seat allocation, electorate simulation, coalition tables |
 | `eval/scoring.py`, `eval/backtest.py`, `eval/calibration.py` | scores, backtests and stacking, spread calibration |
+| `assumptions.py` | checks the editorial assumptions against the tracked parties and the electorate boundaries |
 | `report/charts.py` | the static SVG and interactive Plotly charts |
 | `report/site.py` | what the website's pages compute: tables, figures and quoted numbers, with Wikipedia text escaped |
 | `report/render.py` | builds the website: the steps before and after Quarto renders, and the Quarto run |
@@ -38,7 +39,7 @@ forecast and the two pages on method. This developer documentation stays in `doc
 | `model.qmd`, `evaluation.qmd` | "How the model works" and "How it is tested" |
 | `_partials/_setup.qmd` | included by every page: loads the outputs into `site` for the page's Python cells |
 | `_partials/_backtest-tables.qmd` | the backtest tables, included by the forecast page and "How it is tested" |
-| `_partials/fonts.html`, `resize-charts.html` | the web fonts, and a script that redraws a chart when its tab opens |
+| `_partials/fonts.html`, `charts.html` | the web fonts, and chart behaviour: redrawing a chart when its tab opens, and no drag-to-zoom on touch screens |
 | `_scripts/pre-render.py` | writes `_variables.yml` (the election's year and date) and draws the static SVG charts |
 | `_scripts/post-render.py` | copies the CSV, JSON and SVG downloads into `site/` |
 | `_styles/` | the theme: Sandstone and Darkly with the 2023 site's fonts, plus tiles, tables and chart layout |
@@ -75,6 +76,7 @@ pytest -q -k "not recovers_path"   # skip the slow model smoke tests
 | `test_scoring.py` | CRPS, energy score, mixture CRPS, stacking, the bridge sampler |
 | `test_fixes.py` | regression tests: transition density, fit persistence, source fingerprints, electorate probabilities, balance-of-power classes, backtest bloc rescoring |
 | `test_model_smoke.py` | every variant recovers a known path from simulated polls |
+| `test_assumptions.py` | the editorial-assumption checks, the boundary sets, and charts that must not zoom |
 | `test_site.py` | the website's building blocks: escaping, tables, rendering older summaries; chart label spacing |
 | `test_pipeline_e2e.py` | prep, forecast and the whole Quarto website on the fixtures (skipped without Quarto), including a hostile pollster name that must neither inject script nor run a shortcode, and links between pages |
 

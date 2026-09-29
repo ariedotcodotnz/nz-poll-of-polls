@@ -13,7 +13,7 @@ fmt = lambda n: f"{int(n):,}"
 mcmc = {k: fmt(v) for k, v in site.cfg.mcmc.items() if k in ("chains", "warmup", "samples")}
 bt_mcmc = {k: fmt(v) for k, v in site.cfg.model_cfg["backtest"]["mcmc"].items()}
 n_sims = fmt(site.cfg.model_cfg["seats"]["n_sims"])
-bop = site.cfg.electorates_cfg.get("balance_of_power", {})
+assumptions = site.assumptions
 wider = site.wider_error_parties()
 tpm_sweep = site.electorate_sweep_risk("Te Pāti Māori")
 if tpm_sweep is None:
@@ -23,8 +23,8 @@ else:
     sweep_example = (f"With the current assumptions that leaves Te Pāti Māori a {tpm_none} chance of holding "
                      f"none of its configured electorates, against {tpm_none_independent} if each seat were "
                      "an independent coin.")
-blocs = ", and ".join(" + ".join(members) for members in bop.get("blocs", {}).values())
-pivots = " or ".join(bop.get("pivots", []))
+blocs = ", and ".join(" + ".join(members) for members in assumptions.blocs.values())
+pivots = " or ".join(assumptions.pivots)
 ```
 
 The model follows the state-space approach of Jackman (2005), *Pooling the polls over an election campaign*,

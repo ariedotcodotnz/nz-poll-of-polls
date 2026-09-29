@@ -157,6 +157,9 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
         w = [1.0 / len(variants)] * len(variants)
     target = cfg.forecast_election.year
     ds = Dataset.load(cfg.paths.processed / f"dataset_{target}")
+    assumptions = cfg.assumptions(ds.parties)     # stops here, saying what to fix, if electorates.yml is wrong
+    for note in assumptions.notes:
+        _log(f"electorates.yml: {note}")
     rng = np.random.default_rng(seed)
     fits = {v: FitResult.load(cfg.paths.processed / f"fit_{v}_{target}") for v in variants}
 
@@ -182,9 +185,7 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
         _log(f"spread calibration: x{factor(spread, weeks_to_go):.2f} at {weeks_to_go:.1f} weeks, "
              f"x{factor(spread, 1.0):.2f} for 'held now'")
 
-    electorate_cfg = cfg.electorates_cfg["electorates"]
-    group_sd = float(cfg.electorates_cfg.get("electorate_group_sd", 0.0))
-    coal_cfg = cfg.electorates_cfg["coalitions"]
+    electorate_cfg, group_sd, coal_cfg = assumptions.electorates, assumptions.group_sd, assumptions.coalitions
     sim_target = simulate_seats(pi_target, ds.parties, electorate_cfg, size, rng, group_sd=group_sd)
     sim_now = simulate_seats(pi_now, ds.parties, electorate_cfg, size, rng, group_sd=group_sd)
 
@@ -242,9 +243,7 @@ def forecast(cfg: Config, variants: list[str] | None = None, seed: int = 2026) -
                 house_rows.append({"house": label, "party": p, "effect_pp": float((shifted[k] - base_pi[k]) * 100)})
     pl.DataFrame(house_rows).write_csv(out / "house_effects.csv")
 
-    bop_cfg = cfg.electorates_cfg.get("balance_of_power", {})
-    bop = {when: balance_of_power(sim["seats"], ds.parties, sim["total"], bop_cfg.get("blocs", {}),
-                                  bop_cfg.get("pivots", []))
+    bop = {when: balance_of_power(sim["seats"], ds.parties, sim["total"], assumptions.blocs, assumptions.pivots)
            for when, sim in (("election_day", sim_target), ("now", sim_now))}
     table, _ = load_prepped(cfg)
     latest = table.filter(pl.col("cycle") == target)

@@ -42,9 +42,25 @@ def fit(variants: Optional[str] = typer.Option(None, help="comma-separated varia
 @app.command()
 def forecast(variants: Optional[str] = None, root: Optional[Path] = None):
     """Combine fitted variants, simulate seats and coalitions, write output/."""
+    from .assumptions import AssumptionError
     from .pipeline import forecast as _forecast
     cfg = _cfg(root)
-    _forecast(cfg, variants.split(",") if variants else None)
+    try:
+        _forecast(cfg, variants.split(",") if variants else None)
+    except AssumptionError as err:
+        typer.echo("config/electorates.yml needs changing:\n  " + str(err).replace("\n", "\n  "), err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
+def electorates(root: Optional[Path] = None):
+    """Check config/electorates.yml and show what each editorial assumption implies at the latest forecast."""
+    from .assumptions import AssumptionError, preview_text
+    try:
+        typer.echo(preview_text(_cfg(root)))
+    except AssumptionError as err:
+        typer.echo("config/electorates.yml needs changing:\n  " + str(err).replace("\n", "\n  "), err=True)
+        raise typer.Exit(1)
 
 
 @app.command()

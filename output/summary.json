@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-09-28T06:57:49+00:00",
+ "generated_at": "2026-09-29T02:54:26+00:00",
  "election_date": "2026-11-07",
- "days_to_election": 40,
+ "days_to_election": 39,
  "cutoff": "2026-09-28",
  "variants": [
   "gauss",
@@ -233,7 +233,7 @@
  "seats_election_day": [
   {
    "party": "National",
-   "seats_mean": 34.2977,
+   "seats_mean": 34.38605,
    "seats_q05": 28.0,
    "seats_q50": 34.0,
    "seats_q95": 42.0,
@@ -241,7 +241,7 @@
   },
   {
    "party": "Labour",
-   "seats_mean": 34.2132,
+   "seats_mean": 34.291,
    "seats_q05": 26.0,
    "seats_q50": 34.0,
    "seats_q95": 44.0,
@@ -249,7 +249,7 @@
   },
   {
    "party": "Green",
-   "seats_mean": 15.35815,
+   "seats_mean": 15.39345,
    "seats_q05": 12.0,
    "seats_q50": 15.0,
    "seats_q95": 20.0,
@@ -257,15 +257,15 @@
   },
   {
    "party": "ACT",
-   "seats_mean": 12.7654,
+   "seats_mean": 12.7978,
    "seats_q05": 8.0,
    "seats_q50": 12.0,
    "seats_q95": 19.0,
-   "p_any_seats": 0.99825
+   "p_any_seats": 0.9985
   },
   {
    "party": "NZ First",
-   "seats_mean": 13.47605,
+   "seats_mean": 13.50645,
    "seats_q05": 9.0,
    "seats_q50": 13.0,
    "seats_q95": 20.0,
@@ -273,15 +273,15 @@
   },
   {
    "party": "Te Pāti Māori",
-   "seats_mean": 3.4642,
-   "seats_q05": 1.0,
-   "seats_q50": 3.0,
+   "seats_mean": 3.8902,
+   "seats_q05": 2.0,
+   "seats_q50": 4.0,
    "seats_q95": 6.0,
-   "p_any_seats": 0.96145
+   "p_any_seats": 0.98655
   },
   {
    "party": "TOP",
-   "seats_mean": 6.6876,
+   "seats_mean": 6.7016,
    "seats_q05": 0.0,
    "seats_q50": 8.0,
    "seats_q95": 15.0,
@@ -304,10 +304,10 @@
     "ACT",
     "NZ First"
    ],
-   "seats_mean": 60.53915,
+   "seats_mean": 60.6903,
    "seats_q05": 52.0,
    "seats_q95": 69.0,
-   "p_majority": 0.47245
+   "p_majority": 0.4727
   },
   {
    "name": "National + ACT",
@@ -315,10 +315,10 @@
     "National",
     "ACT"
    ],
-   "seats_mean": 47.0631,
+   "seats_mean": 47.18385,
    "seats_q05": 40.0,
    "seats_q95": 54.0,
-   "p_majority": 0.0021
+   "p_majority": 0.00255
   },
   {
    "name": "National + NZ First",
@@ -326,10 +326,10 @@
     "National",
     "NZ First"
    ],
-   "seats_mean": 47.77375,
-   "seats_q05": 39.0,
+   "seats_mean": 47.8925,
+   "seats_q05": 40.0,
    "seats_q95": 56.0,
-   "p_majority": 0.0099
+   "p_majority": 0.0095
   },
   {
    "name": "National + ACT + TOP",
@@ -338,10 +338,10 @@
     "ACT",
     "TOP"
    ],
-   "seats_mean": 53.7507,
+   "seats_mean": 53.88545,
    "seats_q05": 45.0,
    "seats_q95": 62.0,
-   "p_majority": 0.0747
+   "p_majority": 0.07525
   },
   {
    "name": "Labour + Green + Te Pāti Māori",
@@ -350,10 +350,10 @@
     "Green",
     "Te Pāti Māori"
    ],
-   "seats_mean": 53.03555,
-   "seats_q05": 44.0,
-   "seats_q95": 62.0,
-   "p_majority": 0.07415
+   "seats_mean": 53.57465,
+   "seats_q05": 45.0,
+   "seats_q95": 63.0,
+   "p_majority": 0.0833
   },
   {
    "name": "Labour + Green",
@@ -361,7 +361,7 @@
     "Labour",
     "Green"
    ],
-   "seats_mean": 49.57135,
+   "seats_mean": 49.68445,
    "seats_q05": 41.0,
    "seats_q95": 59.0,
    "p_majority": 0.02375
@@ -373,10 +373,10 @@
     "Green",
     "NZ First"
    ],
-   "seats_mean": 63.0474,
+   "seats_mean": 63.1909,
    "seats_q05": 55.0,
    "seats_q95": 72.0,
-   "p_majority": 0.66055
+   "p_majority": 0.6598
   },
   {
    "name": "Labour + Green + TOP",
@@ -385,10 +385,10 @@
     "Green",
     "TOP"
    ],
-   "seats_mean": 56.25895,
+   "seats_mean": 56.38605,
    "seats_q05": 48.0,
    "seats_q95": 65.0,
-   "p_majority": 0.18135
+   "p_majority": 0.1804
   },
   {
    "name": "Labour + Green + Te Pāti Māori + TOP",
@@ -398,10 +398,10 @@
     "Te Pāti Māori",
     "TOP"
    ],
-   "seats_mean": 59.72315,
+   "seats_mean": 60.27625,
    "seats_q05": 51.0,
    "seats_q95": 69.0,
-   "p_majority": 0.41435
+   "p_majority": 0.4451
   }
  ],
  "coalitions_now": [
@@ -412,10 +412,10 @@
     "ACT",
     "NZ First"
    ],
-   "seats_mean": 60.3624,
+   "seats_mean": 60.5115,
    "seats_q05": 56.0,
    "seats_q95": 66.0,
-   "p_majority": 0.3997
+   "p_majority": 0.4018
   },
   {
    "name": "National + ACT",
@@ -423,7 +423,7 @@
     "National",
     "ACT"
    ],
-   "seats_mean": 47.008,
+   "seats_mean": 47.12395,
    "seats_q05": 43.0,
    "seats_q95": 52.0,
    "p_majority": 0.00055
@@ -434,10 +434,10 @@
     "National",
     "NZ First"
    ],
-   "seats_mean": 47.86635,
+   "seats_mean": 47.98575,
    "seats_q05": 43.0,
    "seats_q95": 53.0,
-   "p_majority": 0.0009
+   "p_majority": 0.00095
   },
   {
    "name": "National + ACT + TOP",
@@ -446,10 +446,10 @@
     "ACT",
     "TOP"
    ],
-   "seats_mean": 54.0236,
+   "seats_mean": 54.15845,
    "seats_q05": 49.0,
    "seats_q95": 59.0,
-   "p_majority": 0.0117
+   "p_majority": 0.0116
   },
   {
    "name": "Labour + Green + Te Pāti Māori",
@@ -458,10 +458,10 @@
     "Green",
     "Te Pāti Māori"
    ],
-   "seats_mean": 52.8899,
+   "seats_mean": 53.43505,
    "seats_q05": 48.0,
-   "seats_q95": 58.0,
-   "p_majority": 0.0088
+   "seats_q95": 59.0,
+   "p_majority": 0.01165
   },
   {
    "name": "Labour + Green",
@@ -469,10 +469,10 @@
     "Labour",
     "Green"
    ],
-   "seats_mean": 49.4922,
+   "seats_mean": 49.6137,
    "seats_q05": 45.0,
-   "seats_q95": 54.0,
-   "p_majority": 0.00055
+   "seats_q95": 55.0,
+   "p_majority": 0.00035
   },
   {
    "name": "Labour + Green + NZ First",
@@ -481,10 +481,10 @@
     "Green",
     "NZ First"
    ],
-   "seats_mean": 62.8466,
+   "seats_mean": 63.00125,
    "seats_q05": 58.0,
    "seats_q95": 68.0,
-   "p_majority": 0.75045
+   "p_majority": 0.75355
   },
   {
    "name": "Labour + Green + TOP",
@@ -493,10 +493,10 @@
     "Green",
     "TOP"
    ],
-   "seats_mean": 56.5078,
+   "seats_mean": 56.6482,
    "seats_q05": 51.0,
    "seats_q95": 61.0,
-   "p_majority": 0.06705
+   "p_majority": 0.0674
   },
   {
    "name": "Labour + Green + Te Pāti Māori + TOP",
@@ -506,10 +506,10 @@
     "Te Pāti Māori",
     "TOP"
    ],
-   "seats_mean": 59.9055,
-   "seats_q05": 54.0,
-   "seats_q95": 65.0,
-   "p_majority": 0.39665
+   "seats_mean": 60.46955,
+   "seats_q05": 55.0,
+   "seats_q95": 66.0,
+   "p_majority": 0.4547
   }
  ],
  "balance_of_power": {
@@ -524,15 +524,15 @@
      "NZ First",
      "TOP"
     ],
-    "p_alone": 0.0021,
+    "p_alone": 0.00255,
     "p_with": {
-     "NZ First": 0.47035,
-     "TOP": 0.0726
+     "NZ First": 0.47015,
+     "TOP": 0.0727
     },
-    "p_any_one": 0.49885,
-    "p_needs_several": 0.38535,
-    "p_needs_all": 0.38535,
-    "p_short": 0.1137
+    "p_any_one": 0.4986,
+    "p_needs_several": 0.3851,
+    "p_needs_all": 0.3851,
+    "p_short": 0.11375
    },
    {
     "bloc": "Left bloc",
@@ -545,15 +545,15 @@
      "NZ First",
      "TOP"
     ],
-    "p_alone": 0.07415,
+    "p_alone": 0.0833,
     "p_with": {
-     "NZ First": 0.79415,
-     "TOP": 0.3402
+     "NZ First": 0.80245,
+     "TOP": 0.3618
     },
-    "p_any_one": 0.82995,
-    "p_needs_several": 0.091,
-    "p_needs_all": 0.091,
-    "p_short": 0.0049
+    "p_any_one": 0.8364,
+    "p_needs_several": 0.0759,
+    "p_needs_all": 0.0759,
+    "p_short": 0.0044
    }
   ],
   "now": [
@@ -569,13 +569,13 @@
     ],
     "p_alone": 0.00055,
     "p_with": {
-     "NZ First": 0.39915,
-     "TOP": 0.01115
+     "NZ First": 0.40125,
+     "TOP": 0.01105
     },
-    "p_any_one": 0.40075,
-    "p_needs_several": 0.57825,
-    "p_needs_all": 0.57825,
-    "p_short": 0.02045
+    "p_any_one": 0.40285,
+    "p_needs_several": 0.57605,
+    "p_needs_all": 0.57605,
+    "p_short": 0.02055
    },
    {
     "bloc": "Left bloc",
@@ -588,20 +588,20 @@
      "NZ First",
      "TOP"
     ],
-    "p_alone": 0.0088,
+    "p_alone": 0.01165,
     "p_with": {
-     "NZ First": 0.95395,
-     "TOP": 0.38785
+     "NZ First": 0.9619,
+     "TOP": 0.44305
     },
-    "p_any_one": 0.95605,
-    "p_needs_several": 0.03405,
-    "p_needs_all": 0.03405,
-    "p_short": 0.0011
+    "p_any_one": 0.964,
+    "p_needs_several": 0.02345,
+    "p_needs_all": 0.02345,
+    "p_short": 0.0009
    }
   ]
  },
- "expected_house_size": 121.0388,
- "p_overhang": 0.5371,
+ "expected_house_size": 121.40245,
+ "p_overhang": 0.6775,
  "diagnostics": {
   "gauss": {
    "n_divergent": 0,

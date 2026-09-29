@@ -1,0 +1,24 @@
+<script>
+// Chart behaviour shared by every page.
+(function () {
+  // Plotly sizes a chart when it is drawn, so a chart drawn in a hidden tab or collapsed callout comes out the
+  // wrong size. Quarto announces a shown tab with "slideenter" and Bootstrap an opened callout with
+  // "shown.bs.collapse"; a window resize makes Plotly measure again.
+  ["slideenter", "shown.bs.collapse"].forEach(function (name) {
+    document.addEventListener(name, function () { window.dispatchEvent(new Event("resize")); });
+  });
+
+  // On a touch screen a drag that starts on a chart should scroll the page, not zoom the chart: fix every axis
+  // and turn dragging off. Tapping still shows the values. With a mouse, the time-series charts keep their zoom.
+  if (!window.matchMedia("(pointer: coarse)").matches) return;
+  window.addEventListener("load", function () {
+    document.querySelectorAll(".js-plotly-plot").forEach(function (gd) {
+      var update = { dragmode: false };
+      Object.keys(gd.layout || {}).forEach(function (key) {
+        if (/^[xy]axis\d*$/.test(key)) update[key + ".fixedrange"] = true;
+      });
+      window.Plotly.relayout(gd, update);
+    });
+  });
+})();
+</script>

@@ -56,19 +56,23 @@ Each entry of `pollsters`:
 
 ## electorates.yml
 
-Electorate assumptions for the 2026 seat simulation. They are editorial judgements, not model output.
+The editorial assumptions: who wins the electorates that can change the seat count, the coalitions reported,
+and the balance-of-power blocs. They are judgements, not model output. [Editorial assumptions](electorates.md)
+explains every key with examples, and `pollofpolls electorates` checks the file and previews its effect.
 
 Each entry of `electorates`:
 
 | Key | Meaning |
 |---|---|
-| `electorate` | name, for readability |
-| `party` | the party whose win matters for the allocation |
+| `electorate` | its name at the boundaries of the forecast election (`boundaries.yml`) |
+| `party` | the tracked party the seat is modelled for |
 | `p` | probability the party wins when its national vote equals `at_share` |
-| `at_share` | the reference national vote share for `p` |
-| `slope` | change in the logit of `p` per percentage point of simulated party vote above `at_share` |
-| `independent_p` | optional probability that an independent or non-list candidate wins at `at_share` |
+| `independent_p` | optional probability that a candidate outside the tracked parties wins, at `at_share` |
+| `at_share`, `slope`, `group` | optional overrides of the party's `party_defaults` |
+| `note`, `source`, `updated` | free text for the record; ignored by the model |
 
+`party_defaults` sets `at_share` (the national vote the `p` values were judged at), `slope` (change in the logit
+of `p` per percentage point of simulated vote above `at_share`; default 0.3) and `group` once per party.
 `p + independent_p` must not exceed 1; the remainder is the chance that anyone else wins. List an electorate
 only if its result can change the proportional allocation: a party that may fall below 5%, or a possible
 independent winner. Electorates won by parties safely above 5% make no difference.
@@ -86,6 +90,13 @@ combinations with TOP on either side, because TOP calls itself centrist and may 
 
 For each bloc the website gives the chance of a majority alone, with each pivot party on its own, only with
 two or more pivots together (with two pivots, both), or not even then.
+
+## boundaries.yml
+
+The electorates in use at each election, from the Representation Commission, with the boundary sets side by
+side: the 2025 review (from 2026) and the 2019–20 review (2020 and 2023). Each set's `replaced` maps the
+electorates it abolished to the ones that took their area, so an old name in `electorates.yml` gets an error
+naming its successors. Change it only after a boundary review; see [Editorial assumptions](electorates.md#boundaries).
 
 ## model.yml
 

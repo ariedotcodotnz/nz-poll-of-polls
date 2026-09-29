@@ -113,7 +113,7 @@ def test_simulate_seats_shapes(prepped):
     parties = ["National", "Labour", "Green", "ACT", "NZ First", "Te Pāti Māori", "TOP", "Other"]
     rng = np.random.default_rng(0)
     pi = rng.dirichlet(np.array([30, 28, 11, 9, 11, 2.5, 6, 2.5]) * 40, size=500)
-    sim = simulate_seats(pi, parties, cfg.electorates_cfg["electorates"], 500, rng)
+    sim = simulate_seats(pi, parties, cfg.assumptions(parties).electorates, 500, rng)
     assert sim["seats"].shape == (500, 8)
     assert (sim["total"] >= 120).all() and (sim["seats"][:, -1] == 0).all()
     assert sim["electorates"][:, parties.index("ACT")].mean() > 0.8

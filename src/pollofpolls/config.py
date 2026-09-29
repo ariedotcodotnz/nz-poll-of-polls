@@ -69,6 +69,7 @@ class Config:
         self.elections_cfg = self._load("elections.yml")
         self.pollsters_cfg = self._load("pollsters.yml")
         self.electorates_cfg = self._load("electorates.yml")
+        self.boundaries_cfg = self._load("boundaries.yml")
         self.model_cfg = self._load("model.yml")
 
     def _load(self, name: str) -> dict:
@@ -143,6 +144,15 @@ class Config:
     @property
     def ensemble(self) -> list[str]:
         return list(self.model_cfg.get("ensemble", [self.default_variant]))
+
+    def assumptions(self, parties: list[str], year: int | None = None):
+        """The editorial assumptions in electorates.yml, checked against ``parties`` and the boundaries in force
+        at the election of ``year`` (the forecast election by default). Raises AssumptionError listing every
+        problem."""
+        from .assumptions import load_assumptions
+        known = [*self.colours, *(p for e in self.elections_cfg.get("elections", []) for p in e.get("in_parliament", []))]
+        return load_assumptions(self.electorates_cfg, self.boundaries_cfg, parties,
+                                year or self.forecast_election.year, known=known)
 
     @property
     def priors(self) -> dict:

@@ -61,7 +61,7 @@ those fits are, or rerun the cases.
 | Situation | What to do |
 |---|---|
 | New polls on Wikipedia | nothing; the weekly run fetches them, or push to run now |
-| An electorate outlook changes | edit `config/electorates.yml`, then `pollofpolls forecast && pollofpolls report`. No refit is needed. |
+| An electorate outlook changes | edit `config/electorates.yml` (see [Editorial assumptions](electorates.md)), check it with `pollofpolls electorates`, then `pollofpolls forecast && pollofpolls report`. No refit is needed. |
 | A new pollster appears | it is kept under its Wikipedia name. Add an entry to `config/pollsters.yml` to give it a canonical name, a default sample size and a publication delay. |
 | A pollster changes method | add the date to its `method_changes`; its house effect starts a new segment |
 | A small party surges | it is tracked automatically once it reaches 2.5% in four polls of the term. Add its colour to `config/elections.yml`. |
@@ -79,7 +79,9 @@ After the 2026 results are official:
 2. **Reference data.** Add the 2026 party-vote shares to `data/reference/election_results.csv` and the
    electorates won to `data/reference/electorate_seats.csv`.
 3. **Assumptions.** Rewrite `config/electorates.yml` for the new Parliament, including the coalitions to report
-   and the blocs and pivot parties for the balance-of-power table.
+   and the blocs and pivot parties for the balance-of-power table. After a boundary review, add the new boundary
+   set to `config/boundaries.yml` first; `pollofpolls electorates` then flags every assumption about an abolished
+   seat.
 4. **Backtests.** Add 2026 to `backtest.targets` in `config/model.yml` and its seat blocs to `backtest.blocs`,
    then re-run the backtests to refresh the stacking weights. The GitHub Actions workflow reads the same list, so
    it starts a job for 2026 and checks that its results arrive.

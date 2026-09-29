@@ -20,6 +20,7 @@ pollofpolls fit           # NUTS fits of the ensemble variants (cached by input 
 pollofpolls forecast      # stacked ensemble -> seats, coalitions, output/*.csv and summary.json
 pollofpolls report        # the website, built with Quarto from website/ into site/
 pollofpolls backtest      # rolling-origin backtests on 2017/2020/2023 -> stacking weights (slow)
+pollofpolls electorates   # check the editorial electorate assumptions and preview what they imply
 ```
 
 `pollofpolls all --quick` runs fetch to report with short MCMC chains for development. A full `fit`
@@ -33,7 +34,7 @@ The website at <https://ariedotcodotnz.github.io/nz-poll-of-polls/> has the fore
 Quarto project in [`website/`](website/).
 
 Developer documentation is in [`docs/`](docs/README.md): [getting started](docs/getting-started.md),
-[pipeline](docs/pipeline.md), [configuration](docs/configuration.md), [data](docs/data.md),
+[pipeline](docs/pipeline.md), [editorial assumptions](docs/electorates.md), [configuration](docs/configuration.md), [data](docs/data.md),
 [outputs](docs/outputs.md), [operations](docs/operations.md) and [development](docs/development.md).
 
 ## The model
