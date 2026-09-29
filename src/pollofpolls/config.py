@@ -150,7 +150,8 @@ class Config:
         at the election of ``year`` (the forecast election by default). Raises AssumptionError listing every
         problem."""
         from .assumptions import load_assumptions
-        known = [*self.colours, *(p for e in self.elections_cfg.get("elections", []) for p in e.get("in_parliament", []))]
+        parliaments = (self.elections_cfg.get("in_parliament") or {}).values()
+        known = [*self.colours, *(p for members in parliaments for p in members)]
         return load_assumptions(self.electorates_cfg, self.boundaries_cfg, parties,
                                 year or self.forecast_election.year, known=known)
 

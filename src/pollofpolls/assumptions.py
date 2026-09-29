@@ -21,6 +21,9 @@ from dataclasses import dataclass, field
 ELECTORATE_KEYS = {"electorate", "party", "p", "independent_p", "at_share", "slope", "group", "note", "source",
                    "updated"}
 DEFAULT_KEYS = {"at_share", "slope", "group"}
+SECTIONS = {"electorate_group_sd", "party_defaults", "electorates", "coalitions", "balance_of_power"}
+REQUIRED_SECTIONS = ("electorates", "coalitions")      # a misspelt section must not quietly mean "none"
+BALANCE_KEYS = {"blocs", "pivots"}
 DEFAULT_SLOPE = 0.3
 OTHER = "Other"
 
@@ -119,6 +122,17 @@ def load_assumptions(electorates_cfg: dict, boundaries_cfg: dict, parties: list[
     named = [p for p in parties if p != OTHER]
     vocabulary = list(dict.fromkeys([*named, *(p for p in known or [] if p != OTHER)]))
 
+    for key in sorted(set(electorates_cfg) - SECTIONS):
+        problems.append(f"unknown section `{key}`{_suggest(key, sorted(SECTIONS))}")
+    for key in REQUIRED_SECTIONS:
+        if key not in electorates_cfg:
+            problems.append(f"the `{key}` section is missing; write `{key}: []` if there should be none")
+    for key, kind in (("party_defaults", dict), ("electorates", list), ("coalitions", list),
+                      ("balance_of_power", dict)):
+        if electorates_cfg.get(key) is not None and not isinstance(electorates_cfg[key], kind):
+            problems.append(f"`{key}` should be a {'list of entries' if kind is list else 'mapping'}")
+            electorates_cfg = {**electorates_cfg, key: kind()}
+
     def party(name: object, where: str) -> str | None:
         """The canonical name of a tracked or known party; None, with a problem recorded, for anything else."""
         found = _match(name, vocabulary)
@@ -195,6 +209,8 @@ def load_assumptions(electorates_cfg: dict, boundaries_cfg: dict, parties: list[
         coalitions.append({**c, "parties": [m for m in members if m]})
 
     bop = electorates_cfg.get("balance_of_power") or {}
+    for key in sorted(set(bop) - BALANCE_KEYS):
+        problems.append(f"balance_of_power: unknown key `{key}`{_suggest(key, sorted(BALANCE_KEYS))}")
     blocs = {name: [m for m in (party(p, f"balance_of_power: {name}") for p in members) if m]
              for name, members in (bop.get("blocs") or {}).items()}
     pivots = [m for m in (party(p, "balance_of_power: pivots") for p in bop.get("pivots") or []) if m]

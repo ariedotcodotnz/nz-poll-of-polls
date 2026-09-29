@@ -98,6 +98,32 @@ def test_a_party_nobody_has_heard_of_is_still_an_error(cfg):
                          known=list(cfg.colours))
 
 
+def test_a_misspelt_section_is_an_error_not_an_empty_list(cfg):
+    """Renaming `electorates` by accident must not quietly drop every electorate assumption."""
+    bad = copy.deepcopy(cfg.electorates_cfg)
+    bad["electroates"] = bad.pop("electorates")
+    bad["balance_of_power"]["pivot"] = bad["balance_of_power"].pop("pivots")
+    with pytest.raises(AssumptionError) as err:
+        load_assumptions(bad, cfg.boundaries_cfg, PARTIES, 2026)
+    msg = str(err.value)
+    assert "unknown section `electroates`; did you mean electorates?" in msg
+    assert "the `electorates` section is missing; write `electorates: []` if there should be none" in msg
+    assert "balance_of_power: unknown key `pivot`; did you mean pivots?" in msg
+    empty = {**copy.deepcopy(cfg.electorates_cfg), "electorates": []}
+    assert load_assumptions(empty, cfg.boundaries_cfg, PARTIES, 2026).electorates == []   # none, on purpose
+
+
+def test_parties_from_past_parliaments_are_known_not_misspellings(cfg, monkeypatch):
+    """United Future and Mana have no colour but sat in Parliament: untracked now, so they hold no seats."""
+    edited = copy.deepcopy(cfg.electorates_cfg)
+    edited["electorates"].append({"electorate": "Kenepuru", "party": "Mana", "p": 0.1})
+    edited["coalitions"].append({"name": "National + United Future", "parties": ["National", "United Future"]})
+    monkeypatch.setattr(cfg, "electorates_cfg", edited)
+    a = cfg.assumptions(PARTIES)
+    assert any(n.startswith("Mana is not tracked") for n in a.notes)
+    assert ["National", "United Future"] in [c["parties"] for c in a.coalitions]
+
+
 def test_an_electorate_can_override_its_party_defaults(cfg):
     entries = [{"electorate": "Waiariki", "party": "Te Pāti Māori", "p": 0.8, "slope": 0.1}]
     e = _check(cfg, electorates=entries).electorates[0]

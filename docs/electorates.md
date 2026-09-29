@@ -170,6 +170,8 @@ Every problem is listed at once. Names match ignoring case and macrons, so `Te P
 | `unknown key `indpendent_p`; did you mean independent_p?` | fix the key |
 | `p (0.7) and independent_p (0.4) add up to more than 1` | the two are chances of different people winning the same seat |
 | `listed twice` | keep one entry per electorate |
+| `unknown section `electroates`; did you mean electorates?` | a top-level heading is misspelt; the check refuses rather than treating it as empty |
+| `the `coalitions` section is missing` | put the section back, or write `coalitions: []` if there should be none |
 | `NZ First is both a pivot and in Right bloc` | a pivot sits outside the blocs |
 
 Two things are notes rather than errors, so the same file works for a forecast of another election: a party the
