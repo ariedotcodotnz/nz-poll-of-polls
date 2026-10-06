@@ -12,6 +12,16 @@
   "NZ First",
   "Other"
  ],
+ "blocs": {
+  "right": [
+   "National",
+   "ACT"
+  ],
+  "left": [
+   "Labour",
+   "Green"
+  ]
+ },
  "p_right_bloc_ahead": 0.0,
  "right_bloc_ahead": false,
  "brier_bloc": 0.0,
@@ -33,7 +43,7 @@
  },
  "diagnostics": {
   "n_divergent": 0,
-  "seconds": 71.7,
+  "seconds": 37.5,
   "mean_num_steps": 127.0,
   "max_rhat": 1.010208552226018,
   "min_ess_bulk": 401.7004410966697,
