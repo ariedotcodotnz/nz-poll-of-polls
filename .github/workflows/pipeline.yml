@@ -150,6 +150,9 @@ jobs:
       - run: pollofpolls prep
       - run: pollofpolls fit
       - run: pollofpolls forecast
+      - name: Special votes in close electorates (when their data is in the repository)
+        run: |
+          if [ -d data/reference/electorate-seats-small-margin ]; then pollofpolls specials; fi
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
           version: ${{ env.QUARTO_VERSION }}

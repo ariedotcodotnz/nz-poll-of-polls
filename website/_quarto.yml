@@ -6,6 +6,7 @@ project:
   output-dir: ../site
   render:
     - index.qmd
+    - specials.qmd
     - model.qmd
     - evaluation.qmd
   pre-render: _scripts/pre-render.py     # _variables.yml from config, and the static SVG charts
@@ -21,6 +22,8 @@ website:
     left:
       - href: index.qmd
         text: Forecast
+      - href: specials.qmd
+        text: Special votes
       - href: model.qmd
         text: How the model works
       - href: evaluation.qmd

@@ -1,0 +1,134 @@
+# Special votes in the close electorates: the official count forecast from the preliminary count.
+#
+# `pollofpolls specials` fits the model, backtests it and writes output/specials/; the website's "Special votes"
+# page shows the result. The method is in docs/specials.md. Every number below is either where data came from
+# or a stated assumption, and can be changed without touching the code.
+
+election: 2026
+official_results_due: 2026-11-27        # Electoral Commission
+data_dir: data/reference/electorate-seats-small-margin
+#   <year>/candidate-votes-by-voting-place-<n>.csv   official results by voting place (past elections)
+#   <year>/<n>_<Name>.xlsx                           preliminary results by voting place (this election)
+#   preliminary-counts.csv                            election-night counts of past elections, from the
+#                                                     Commission's archived pages (Internet Archive)
+
+# Labour's candidate against National's; everyone else is pooled as "Other". The election-wide special-vote
+# shift is learned for this pair, so every seat below needs a candidate from both.
+pair: [National, Labour]
+
+# The seats to forecast. Preliminary results list candidates without parties, so each candidate's party is
+# given here. Source: Wikipedia, "Candidates in the 2026 New Zealand general election by electorate" (read
+# 8 Nov 2026). The tests check that the two contenders' votes track their party's vote across voting places.
+electorates:
+  - name: Hamilton East
+    file: 2026/12_Hamilton_East.xlsx
+    candidates:
+      "DANSEY, Georgie": Labour
+      "GIELEN, Jacobus": Independent
+      "HAMILTON, Ryan": National
+      "LABOYRIE, Nicola": NZ First
+      "POCOCK, Naomi": Opportunity
+  - name: Hutt South
+    file: 2026/15_Hutt_South.xlsx
+    note: The 2025 boundary review moved Newlands from Ōhāriu into Hutt South.
+    candidates:
+      "ANDERSEN, Ginny": Labour
+      "BISHOP, Chris": National
+      "BOYCE, Alistair": NZ First
+      "DICK, Malcolm": Independent
+      "PETTERSON, Tom": Socialist Equality Group
+      "SMITH, David L F": Independent
+      "WHITE, Courtney": Green
+      "WYLIE-VAN EERD, Ben": Opportunity
+  - name: Mt Roskill
+    file: 2026/27_Mt_Roskill.xlsx
+    candidates:
+      "ATTENBOROUGH, Jamie": Opportunity
+      "CHEUNG, Carlos": National
+      "DEO, Priyanka": Animal Justice
+      "IYER, Anjana": Green
+      "QU, Yang": ACT
+      "WOOD, Michael Philip": Labour
+  - name: Wairarapa
+    file: 2026/55_Wairarapa.xlsx
+    candidates:
+      "ALE, Victoria": Alliance
+      "BUTTERICK, Mike": National
+      "CRAIG, Lauren": Green
+      "GARDNER, Jared Warren": Te Pāti Hira
+      "McANULTY, Kieran": Labour
+      "MARK, Ron": NZ First
+      "SHEPHERD, Matt": Opportunity
+      "YOUNG, Barry": Outdoors
+
+# How many special votes. Each electorate's specials per ordinary vote moves with the national figure.
+volume:
+  reference:                      # the last official count (Electoral Commission, official results, 3 Nov 2023)
+    year: 2023
+    special_votes: 603257
+    total_votes: 2883412
+    overseas_votes: 78030
+  forecast:
+    # Electoral Commission, 8 Nov 2026: "around 399,000 special votes, out of the 2,832,000 total votes cast,
+    # have yet to be counted". Before the election it had expected about 700,000; enrolment closing 13 days
+    # before election day (Electoral Amendment Act 2025) removed the voters who used to enrol while voting.
+    special_votes_estimate: 399000
+    total_votes_estimate: 2832000
+    # The final count has come in above the election-night estimate: 504,621 against 480,000 in 2020 (+5.1%)
+    # and 603,257 against 567,000 in 2023 (+6.4%). Final / estimate - 1:
+    estimate_error: {mean: 0.057, sd: 0.04}
+    # Assumption: overseas (and Defence Force) votes about as many as 2023's 78,030; the enrolment change bears
+    # on voters in New Zealand.
+    overseas_votes: {mean: 78000, sd: 12000}
+  # The enrolment change cut late enrolees, who cluster among students and people who have just moved, so it
+  # cut some electorates' specials more than others. Extra sd of each electorate's log specials-per-ordinary
+  # ratio in the forecast election, on top of the year-to-year variation learned from past elections:
+  rule_change_sd: 0.10
+
+# How the special votes lean.
+rule_change:
+  # Specials cast in New Zealand used to include everyone who enrolled while voting. In 2026 nobody could, so
+  # the domestic specials lose that group: the share removed follows from the national figures above (about
+  # 40%). The group is mostly young and recently moved. Assumption: it leaned to Labour's and to the other
+  # candidates, against National's, compared with the domestic specials that remain. The lean is on the
+  # log-ratio scale against National's candidate (0.1 is about 2.5 points of the two-candidate share in an even
+  # seat). Set both means and sds to 0 to switch the adjustment off.
+  lean:
+    labour: {mean: 0.15, sd: 0.25}
+    other: {mean: 0.15, sd: 0.25}
+
+# Priors. Scales are on the log-ratio scale against National's candidate unless stated.
+priors:
+  category_mean_sd: 0.5            # mean shift of each special-vote category from the seat's ordinary vote
+  year_sd_scale: 0.15              # HalfNormal scale for the sd of the election-wide shift (0.15 is about
+                                   # 3.7 points: the 2017, 2020 and 2023 shifts were +4.7, +7.7 and +0.4)
+  year_df: 4                       # Student-t degrees of freedom for the forecast election's shift; null for
+                                   # normal. Three elections cannot bound it, so the tails are a stated prior.
+  lkj_eta: 2.0                     # correlation of the shift in Labour's and in Other's share
+  year_category_sd_scale: 0.15     # how far overseas and domestic specials move apart in one election
+  electorate_sd_scale: 0.15        # a seat's persistent difference from the election-wide shift
+  noise_sd_scale: 0.10             # everything else, per seat, election and category
+  volume:
+    electorate_sd_scale: 0.5       # log specials per ordinary vote: a seat's persistent difference
+    noise_sd_scale: 0.1            # ... and its year-to-year noise
+  official_count:                  # the official count's change to the ordinary votes
+    jump_prob: [1, 3]              # Beta prior on the chance that it adds votes missing on election night
+    small_sd_scale: 0.005          # HalfNormal scale for the sd of the ordinary change otherwise (share of votes)
+    jump_median: 0.02              # prior median size of an addition (share of votes)
+    jump_log_sd_scale: 0.75
+    max_addition: 0.2              # cap on a simulated addition: more than twice the largest seen (8.3%, Hutt
+                                   # South 2023), so two or three examples cannot imply absurd tails
+    composition_sd_scale: 0.5      # how differently added votes split from the preliminary count
+    recheck_sd_scale: 0.5          # recheck noise per candidate, in units of sqrt(votes)
+
+mcmc: {chains: 4, warmup: 1000, samples: 1000, target_accept: 0.98, max_tree_depth: 10, seed: 2026}
+n_sims: 20000                       # simulated official counts per seat
+close_margin: 100                   # report the chance the final margin is within this many votes
+
+backtest:
+  # Leave one election out: refit on the other elections and forecast each seat's official result from its
+  # preliminary count. Elections without an archived election-night count (2020) are forecast from their
+  # official ordinary votes, so the change to ordinary votes is not part of those cases.
+  mcmc: {chains: 2, warmup: 600, samples: 600}
+  volume_error_sd: 0.04             # the backtest knows the national special-vote volume to this precision,
+  overseas_error_sd: 0.10           # as an election-night estimate would

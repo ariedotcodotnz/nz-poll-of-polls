@@ -132,6 +132,10 @@ def test_website(project, monkeypatch):
     for name, html in pages.items():
         for target, anchor in re.findall(r'href="(?:\./)?(index|model|evaluation)\.html#([\w-]+)"', html):
             assert f'id="{anchor}"' in pages[f"{target}.html"], (name, target, anchor)
+    # the special-vote page renders without its forecast, saying how to make one
+    specials = (site / "specials.html").read_text()
+    assert "pollofpolls specials" in specials and 'href="./specials.html"' in index
+    assert "?var:" not in specials and "{python}" not in specials and "Traceback" not in specials
     for f in ["voting_intention620.svg", "voting_intention375.svg", "voting_intention_all620.svg",
               "voting_intention_all375.svg", "election_night620.svg", "saturday375.svg"]:
         assert (cfg.paths.output / f).stat().st_size > 1000 and (site / f).exists(), f

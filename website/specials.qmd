@@ -1,0 +1,192 @@
+---
+title: "Special votes in the close seats"
+subtitle: "How the official count could change the electorates still in doubt after the {{< var election.year >}} election"
+---
+
+```{python}
+#| include: false
+from pollofpolls.report.specials import SpecialsPage
+
+page = SpecialsPage()
+f = page.facts()
+```
+
+```{python}
+#| output: asis
+print(page.intro())
+print(page.tiles())
+```
+
+## Who wins each seat
+
+```{python}
+#| output: asis
+print(page.seat_table())
+```
+
+### How the final margin could land
+
+Each bar is the share of `{python} f.get("n_sims", "–")` simulated official counts that ended with that margin:
+the {{< var specials.second >}} candidate’s votes minus the {{< var specials.first >}} candidate’s. The dark line is a
+tie; the grey line is the election-night margin.
+
+```{python}
+#| classes: wide-only
+page.show("margins")
+```
+
+```{python}
+#| classes: narrow-only
+page.show("margins", narrow=True)
+```
+
+```{python}
+#| output: asis
+print(page.margin_table())
+```
+
+### What the trailing candidate needs
+
+```{python}
+#| output: asis
+print(page.needs_table())
+```
+
+*Had* is the trailing candidate's share of the two leading candidates' votes on election night; *needs* is the share
+of their special votes that would overturn the election-night margin, at the expected number of special votes;
+*forecast* is the share the model expects. Each seat's special votes are best compared with its own ordinary votes. In the chart, the grey shapes are how much more
+{{< var specials.second >}} each seat's special votes were than its ordinary votes at past elections. The black bar
+is this year's forecast (thick: 50%, thin: 90%), and the tinted zone is where the trailing candidate overtakes.
+
+```{python}
+#| classes: wide-only
+page.show("needs")
+```
+
+```{python}
+#| classes: narrow-only
+page.show("needs", narrow=True)
+```
+
+### If the special votes break like a past election
+
+```{python}
+#| output: asis
+print(page.scenario_table())
+```
+
+The single biggest unknown is how this year's special votes differ from the ordinary vote across the whole country.
+It moves every seat at once, so the table replays each past election's national pattern. *No enrolment adjustment*
+leaves out the effect of the 2025 enrolment change described [below](#method).
+
+### The seats together
+
+```{python}
+#| output: asis
+print(page.joint_text())
+```
+
+## Each seat
+
+```{python}
+#| output: asis
+print(page.seat_tabs())
+```
+
+## How the forecast works {#method}
+
+The official result is the election-night count, plus the official count's change to the ordinary votes, plus
+the special votes. Each part is forecast from the Electoral Commission's results by voting place for these seats
+at the `{python} f.get("years", "–")` elections (`{python} f.get("n_cases", "–")` seat-elections), and each
+simulation draws all three.
+
+**How many special votes.** A seat's special votes per ordinary vote are stable from one election to the next
+relative to the country's: `{python} f.get("most_specials", "–")` has had about `{python} f.get("most_ratio", "–")`
+per 100 ordinary votes, `{python} f.get("fewest_specials", "–")` about `{python} f.get("fewest_ratio", "–")`. The
+model learns each seat's level and moves it with the national figure. The Commission estimates `{python} f.get("estimate", "–")` special votes still to
+count; its election-night estimates have fallen short of the final count by 5 to 6% (2020 and 2023), so the model
+expects about `{python} f.get("final_specials", "–")`. That is `{python} f.get("ratio", "–")`% as many per
+ordinary vote as in 2023.
+
+**How the special votes split.** Each seat's special votes are modelled as a shift from its own ordinary votes,
+on the log-ratio scale against {{< var specials.first >}}’s candidate:
+
+$$
+\eta_{s,c} = x_s + \mu_c + \alpha + \gamma_c + \beta_s + \varepsilon_{s,c}
+$$
+
+where $x_s$ is the seat's election-night vote, $\mu_c$ the average shift of overseas or domestic special votes,
+$\alpha$ this election's national shift, $\gamma_c$ how far overseas and domestic votes part ways in it, $\beta_s$
+the seat's own lasting difference and $\varepsilon_{s,c}$ the rest. Special votes are then drawn from a multinomial
+distribution with shares $\operatorname{softmax}(0, \eta_{s,c})$. Fitted to past elections, the national shift of
+domestic special votes towards {{< var specials.second >}}’s candidate was `{python} f.get("past", "–")` points in an
+evenly split seat. This year's is a fresh draw from that spread, with Student-t tails because three elections cannot
+bound it: `{python} f.get("shift_med", "–")` points (90% interval `{python} f.get("shift_lo", "–")` to
+`{python} f.get("shift_hi", "–")`).
+
+**The 2025 enrolment change.** The Electoral Amendment Act 2025 closed enrolment 13 days before election day, so
+nobody could enrol while voting. Those voters used to cast special votes in New Zealand; the national figures imply
+about `{python} f.get("removed", "–")`% of the domestic special votes are gone. They are mostly young and recently
+moved, so the model assumes, as an editorial judgement, that they leaned away from {{< var specials.first >}}
+compared with the special votes that remain. That moves the domestic special votes about
+`{python} f.get("enrol_pp", "–")` points towards {{< var specials.first >}} (90%: `{python} f.get("enrol_lo", "–")`
+to `{python} f.get("enrol_hi", "–")`). The assumption is in
+[`config/specials.yml`](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/config/specials.yml).
+
+```{python}
+#| output: asis
+print(page.official_count_text())
+```
+
+All parameters are estimated together with the NUTS sampler in [NumPyro](https://num.pyro.ai), and every simulation
+draws one set of them, one national shift shared by all the seats, then each seat's volume, split and recheck.
+
+```{python}
+#| output: asis
+print(page.official_count_table())
+```
+
+## How well it has worked
+
+Each past election was forecast with the model refitted on the other two, starting from the election-night count
+(2017, 2023) or from the official ordinary votes where the election-night count was not archived (2020). Three rules
+of thumb get the same expected number of special votes. CRPS is the average error of the whole forecast
+distribution, in votes of final margin; lower is better.
+
+```{python}
+#| output: asis
+print(page.backtest_table())
+```
+
+```{python}
+#| output: asis
+print(page.backtest_text())
+```
+
+## Special votes in these seats since 2017
+
+```{python}
+#| output: asis
+print(page.history_table())
+```
+
+Shift is the change in {{< var specials.second >}}’s share of the two leading candidates' votes, from the ordinary
+votes to the special votes. Electorate boundaries were redrawn for 2020 and again for 2026, so a seat's history is
+of a slightly different area.
+
+```{python}
+#| output: asis
+print(page.notes())
+```
+
+## Data
+
+```{python}
+#| output: asis
+print(page.downloads())
+```
+
+Sources: Electoral Commission results by voting place (official results 2017–2023, preliminary results 2026);
+election-night counts for 2017 and 2023 from the Commission's archived pages, via the Internet Archive; national
+special-vote figures from the Commission's official-results releases and its 8 November 2026 estimate; candidates'
+parties from Wikipedia's list of 2026 candidates by electorate.

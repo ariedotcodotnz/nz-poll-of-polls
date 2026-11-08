@@ -18,6 +18,7 @@ import yaml
 from ..config import Config
 from . import charts
 from .site import BACKTEST_DOWNLOADS, CHARTS, DOWNLOADS, Site, long_date
+from .specials import DOWNLOADS as SPECIALS_DOWNLOADS
 
 
 def draw_static_charts(site: Site) -> None:
@@ -43,8 +44,12 @@ def prepare(root: Path | None = None) -> None:
         raise SystemExit(f"{site.out / 'summary.json'} not found: run `pollofpolls forecast` before the website")
     project = Path(os.environ.get("QUARTO_PROJECT_DIR") or site.cfg.paths.root / "website")
     e = site.election
+    specials_cfg = site.cfg.paths.config / "specials.yml"           # the special-vote page's two parties
+    specials = yaml.safe_load(specials_cfg.read_text(encoding="utf-8")) if specials_cfg.exists() else None
+    pair = (specials or {}).get("pair") or ["National", "Labour"]
     variables = {"election": {"year": e.year, "date": long_date(e.date)},
-                 "anchor": {"year": site.cfg.anchor_election}}
+                 "anchor": {"year": site.cfg.anchor_election},
+                 "specials": {"first": pair[0], "second": pair[1]}}
     (project / "_variables.yml").write_text("# Written by pollofpolls before each render; do not edit.\n"
                                             + yaml.safe_dump(variables, allow_unicode=True, sort_keys=False),
                                             encoding="utf-8")
@@ -61,6 +66,11 @@ def publish_files(root: Path | None = None) -> None:
     for f in DOWNLOADS + CHARTS:
         if (out / f).exists():
             shutil.copyfile(out / f, site_dir / f)
+    specials = [f for f in SPECIALS_DOWNLOADS if (out / "specials" / f).exists()]
+    if specials:
+        (site_dir / "specials").mkdir(exist_ok=True)
+        for f in specials:
+            shutil.copyfile(out / "specials" / f, site_dir / "specials" / f)
     backtests = [f for f in BACKTEST_DOWNLOADS if (out / "backtest" / f).exists()]
     if backtests:
         (site_dir / "backtest").mkdir(exist_ok=True)

@@ -64,6 +64,16 @@ def electorates(root: Optional[Path] = None):
 
 
 @app.command()
+def specials(root: Optional[Path] = None, quick: bool = False, force: bool = False,
+             backtest: bool = typer.Option(True, help="also backtest the method on past elections (three more fits)")):
+    """Forecast the official count of the close electorates from their preliminary count (config/specials.yml)."""
+    from .specials.run import run_specials
+    ran = run_specials(_cfg(root), quick=quick, run_backtest=backtest, force=force)
+    if not ran:
+        typer.echo("[pollofpolls] specials: inputs unchanged, output/specials/ is up to date (--force to rerun)")
+
+
+@app.command()
 def backtest(variants: Optional[str] = None, targets: Optional[str] = None, horizons: Optional[str] = None,
              root: Optional[Path] = None, force: bool = False,
              aggregate: bool = typer.Option(True, help="score all cached cases and refit stacking weights"),

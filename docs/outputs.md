@@ -67,6 +67,23 @@ The SVG file names are the ones the 2023 pipeline produced, so existing embeds k
 `seat_sims.npz`, not committed, holds the raw simulations: `seats_election`, `total_election`, `seats_now`,
 `total_now`, `pi_election`, `pi_now` and `parties`.
 
+## output/specials/ (special votes)
+
+Written by `pollofpolls specials`; see [Special votes](specials.md). Margins are `pair[1]` minus `pair[0]` in votes
+(Labour minus National), and shares of "the two leaders" are of those two candidates' votes only.
+
+| File | Contents |
+|---|---|
+| `forecast.json` | everything the Special votes page shows: per seat (`seats`) the election-night count, expected special votes, the official count's change, the final `margin` (mean, quantiles, `p_close`), `p_win`, what the trailing candidate needs (`trailing`) and every candidate's forecast; the joint distribution of seats won (`joint`); `scenarios` (each past election's shift replayed, and no enrolment adjustment); the `national` volume and enrolment-change draws; posterior summaries; sampler `diagnostics`; and the `backtest` summary |
+| `seats.csv` | one row per seat: election-night leader and margin, special votes, margin quantiles, win probabilities and the share the trailing candidate needs |
+| `candidates.csv` | one row per candidate: party, election-night votes, mean special votes, final-vote quantiles |
+| `history.csv` | one row per past seat and election: special votes per ordinary vote, overseas share, Labour's share of the two leaders in ordinary and special votes (overall and per category), the shift, and, where the election-night count is archived, how the official count changed the ordinary votes and the margin |
+| `backtest.csv` | one row per past seat, election and method: start and actual margins, CRPS, absolute error, interval coverage, Brier score and log loss |
+| `backtest_summary.csv` | those scores averaged per method |
+| `margins.npz` | simulated final margins (`margin`, simulations × seats) and Labour's share of the two leaders' special votes (`special_share`), for the charts |
+
+The site copies the CSV and JSON files into `specials/`.
+
 ## output/backtest/ (committed)
 
 | File | Contents |
@@ -89,6 +106,7 @@ Built by Quarto from `website/`; see [Development](development.md#the-website).
 | File | Contents |
 |---|---|
 | `index.html` | the forecast, from `website/index.qmd`; chart data is embedded |
+| `specials.html` | "Special votes", from `website/specials.qmd`: the official-count forecast of the close seats |
 | `model.html` | "How the model works", from `website/model.qmd` |
 | `evaluation.html` | "How it is tested", from `website/evaluation.qmd`, with the latest backtest results |
 | `site_libs/` | Quarto's scripts and styles |

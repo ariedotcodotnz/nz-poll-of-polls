@@ -12,6 +12,7 @@ built with Quarto from [`../website/`](../website/), has the forecast and the tw
 | [Getting started](getting-started.md) | install the package and Quarto, run the pipeline and view the website |
 | [Pipeline](pipeline.md) | understand each stage, the command line and caching |
 | [Editorial assumptions](electorates.md) | change who is expected to win the electorates that decide seats, the coalitions or the blocs |
+| [Special votes](specials.md) | forecast the official count of close electorates from their preliminary count, or update its data and assumptions |
 | [Configuration](configuration.md) | change elections, pollsters, electorates, priors or variants |
 | [Data](data.md) | know where the polls and results come from and how they are cleaned |
 | [Outputs](outputs.md) | find a column in any output file |
