@@ -22,6 +22,8 @@ import numpy as np
 from scipy import stats
 
 from ..eval.scoring import crps
+from . import parliament as parl
+from . import partyvote as pv
 from .data import ElectorateCount
 from .model import (
     Posterior,
@@ -32,6 +34,7 @@ from .model import (
     log_ratio,
     softmax0,
 )
+from .national import NationalHistory
 from .simulate import Target, VolumeShift, simulate
 
 METHODS = ["model", "election_night", "seat_last", "average"]
@@ -100,8 +103,12 @@ def _scores(draws: np.ndarray, actual: float) -> dict:
 
 def backtest(counts: list[ElectorateCount], pair: list[str], priors: dict, mcmc: dict, *, n: int = 8000,
              volume_error_sd: float = 0.04, overseas_error_sd: float = 0.10, df: float | None = 4,
-             seed: int = 0, log=print) -> list[dict]:
-    """One row per seat, past election and method."""
+             seed: int = 0, log=print, link=None) -> list[dict]:
+    """One row per seat, past election and method.
+
+    ``link(target_year, n, rng)`` gives the national party-vote lean without the target election:
+    ({training year: (2,)}, draws (n, 2) for the target), or None when the party-vote history lacks that year.
+    """
     usable = [c for c in counts if c.official and c.grouped(c.ordinary, pair) is not None]
     years = sorted({c.year for c in usable})
     rows: list[dict] = []
@@ -110,19 +117,21 @@ def backtest(counts: list[ElectorateCount], pair: list[str], priors: dict, mcmc:
         test = [c for c in usable if c.year == target_year]
         if len({c.year for c in train}) < 2:
             continue
-        data = build_specials_data(train, pair)
+        rng = np.random.default_rng(seed + target_year)
+        linked = link(target_year, n, rng) if link is not None else None
+        data = build_specials_data(train, pair, linked[0] if linked else None)
         post = fit_specials(data, priors, mcmc)
         oc = build_official_count_data(data)
         official: Posterior | None = fit_official_count(oc, priors, mcmc) if len(oc.prelim) else None
         earlier = [y for y in data.years if y < target_year]
         ref = max(earlier) if earlier else min(data.years)
-        rng = np.random.default_rng(seed + target_year)
         v_t, o_t = _pooled_volume(usable, target_year, pair)
         v_r, o_r = _pooled_volume(usable, ref, pair)
         volume = VolumeShift(ref, v_t - v_r + rng.normal(0, volume_error_sd, n),
                              o_t - o_r + rng.normal(0, overseas_error_sd, n))
         targets = [Target(c.electorate, c.key, *_start(c, pair)) for c in test]
         sim = simulate(post, data, targets, volume, official=official, df=df, n=n, seed=seed + target_year,
+                       national=linked[1] if data.national is not None else None,
                        max_addition=float(priors["official_count"].get("max_addition", 0.2)))
         log(f"backtest {target_year}: fitted on {data.years} (divergences {post.diagnostics['n_divergent']}"
             f"{'' if official is None else ', ' + str(official.diagnostics['n_divergent'])})")
@@ -171,4 +180,95 @@ def summarise(rows: list[dict]) -> list[dict]:
                     "brier": float(np.mean([r["brier"] for r in rs])),
                     "log_loss": float(np.mean([r["log_loss"] for r in rs])),
                     "n_flipped": len(flips)})
+    return out
+
+
+# ------------------------------------------------------------------------------------------ party vote
+PARTY_METHODS = {"model": "This model", "election_night": "Specials split like election night",
+                 "average": "Average lean of past elections"}
+
+
+def backtest_party_vote(h: NationalHistory, second: str, priors: dict, mcmc: dict, *,
+                        electorates: dict[int, np.ndarray] | None = None, n: int = 8000, df: float | None = 4,
+                        volume_error_sd: float = 0.04, overseas_error_sd: float = 0.10, nseats: int = 120,
+                        threshold: float = 0.05, seed: int = 0, log=print) -> list[dict]:
+    """Leave one election out: forecast its official party vote from its election-night count (or, where that
+    is not archived, from its official ordinary votes), with the model refitted on the other elections. One row
+    per party and election, with two rules of thumb and, where the electorates won are on file, the seats."""
+    rows: list[dict] = []
+    for t, year in enumerate(h.years):
+        train = [y for y in h.years if y != year]
+        if len(train) < 2:
+            continue
+        d = pv.build_party_vote_data(h, second, train)
+        post = pv.fit_party_vote(d, priors, mcmc)
+        rng = np.random.default_rng(seed + year)
+        from_prelim = not np.isnan(h.prelim[t]).any()
+        start = h.prelim[t] if from_prelim else h.ordinary[t]
+        change = pv.ordinary_change(h.subset(train)) if from_prelim else None
+        lean = pv.draw_lean(post, d, n, rng, df=df)
+        by_cat = h.specials[t].sum(1)                                        # [overseas, domestic]
+        total = by_cat.sum() * np.exp(rng.normal(0, volume_error_sd, n))
+        overseas = np.minimum(by_cat[0] * np.exp(rng.normal(0, overseas_error_sd, n)), 0.9 * total)
+        sim = pv.simulate_party_votes(start, lean, total, overseas, rng, change=change)
+        share = 100 * sim.final / sim.final.sum(1, keepdims=True)
+        actual = 100 * h.final[t] / h.final[t].sum()
+        night = 100 * start / start.sum()
+        # the average rule: every party's specials lean as the average of the training elections
+        avg = np.where(d.stood[:, None, :], d.y, np.nan)
+        avg = np.nan_to_num(np.nanmean(avg, axis=0))                         # (C, K-1)
+        rule = pv.simulate_party_votes(start, avg[None], by_cat.sum()[None], by_cat[:1], np.random.default_rng(0),
+                                       change={**change, "growth_sd": 0.0,
+                                               "composition_sd": [0.0] * (len(start) - 1)} if change else None)
+        average = 100 * rule.final[0] / rule.final[0].sum()
+        seats = None
+        if electorates is not None and year in electorates:
+            e = electorates[year]
+            seats = (parl.elect(sim.final, np.broadcast_to(e, sim.final.shape), h.parties, nseats, threshold).seats,
+                     parl.elect(start, e, h.parties, nseats, threshold).seats[0],
+                     parl.elect(h.final[t], e, h.parties, nseats, threshold).seats[0])
+        log(f"party-vote backtest {year}: fitted on {train} (divergences {post.diagnostics['n_divergent']})")
+        for k, party in enumerate(h.parties):
+            if start[k] < pv.MIN_VOTES:
+                continue
+            lo50, hi50, lo90, hi90 = np.quantile(share[:, k], [0.25, 0.75, 0.05, 0.95])
+            row = {"year": year, "party": party, "start": "election night" if from_prelim else "official ordinary",
+                   "start_share": float(night[k]), "actual_share": float(actual[k]),
+                   "model_median": float(np.median(share[:, k])), "model_q05": float(lo90), "model_q95": float(hi90),
+                   "cover50": bool(lo50 <= actual[k] <= hi50), "cover90": bool(lo90 <= actual[k] <= hi90),
+                   "crps_pp": crps(share[:, k], float(actual[k])),
+                   "abs_error_model": float(abs(np.median(share[:, k]) - actual[k])),
+                   "abs_error_election_night": float(abs(night[k] - actual[k])),
+                   "abs_error_average": float(abs(average[k] - actual[k]))}
+            if seats is not None and (seats[1][k] or seats[2][k]):
+                sims, at_start, final = seats
+                values, counts = np.unique(sims[:, k], return_counts=True)
+                row |= {"seats_start": int(at_start[k]), "seats_actual": int(final[k]),
+                        "seats_model": int(values[counts.argmax()]),
+                        "p_seats_actual": float((sims[:, k] == final[k]).mean())}
+            rows.append(row)
+    return rows
+
+
+def summarise_party_vote(rows: list[dict]) -> dict:
+    """Mean absolute error of each method (percentage points of the party vote), the model's interval coverage,
+    and how often each called the final number of seats."""
+    if not rows:
+        return {}
+    seat_rows = [r for r in rows if "seats_actual" in r]
+    changed = [r for r in seat_rows if r["seats_actual"] != r["seats_start"]]
+    out = {"n_cases": len(rows), "years": sorted({r["year"] for r in rows}),
+           "mae_pp": {m: float(np.mean([r[f"abs_error_{m}"] for r in rows])) for m in PARTY_METHODS},
+           "labels": PARTY_METHODS,
+           "coverage_50": float(np.mean([r["cover50"] for r in rows])),
+           "coverage_90": float(np.mean([r["cover90"] for r in rows])),
+           "crps_pp": float(np.mean([r["crps_pp"] for r in rows]))}
+    if seat_rows:
+        out["seats"] = {"n_cases": len(seat_rows), "n_changed": len(changed),
+                        "model_right": float(np.mean([r["seats_model"] == r["seats_actual"] for r in seat_rows])),
+                        "election_night_right": float(np.mean([r["seats_start"] == r["seats_actual"]
+                                                               for r in seat_rows])),
+                        "mean_p_actual": float(np.mean([r["p_seats_actual"] for r in seat_rows])),
+                        "mean_p_actual_when_changed": (float(np.mean([r["p_seats_actual"] for r in changed]))
+                                                       if changed else None)}
     return out

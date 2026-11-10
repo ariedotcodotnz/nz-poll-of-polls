@@ -228,6 +228,120 @@ def test_fit_recovers_a_known_shift():
     assert abs(shift - 0.3) < 0.08
 
 
+# ------------------------------------------------------------------------------------- party vote and House
+PARTIES = ["National", "Labour", "Green", "ACT", "NZ First", "Opportunity", "Te Pāti Māori", "Other"]
+NIGHT_VOTES = np.array([706680, 710330, 321902, 264121, 236630, 144298, 13845, 20759])
+NIGHT_SEATS = np.array([42, 21, 2, 1, 0, 0, 5, 0])
+GOV, OPP = ["National", "ACT", "NZ First"], ["Labour", "Green", "Te Pāti Māori", "Opportunity"]
+
+
+def test_party_csv_reader_checks_the_total(tmp_path):
+    from pollofpolls.specials.national import PartyNames, read_party_csv
+    good = ("Party Votes\nTestville 7,Party Vote Details\n,,National Party,Labour Party,Total Valid Party Votes,"
+            "Informal Party Votes\nTown,Hall,100,80,180,2\n,Specialist School,10,20,30,0\n"
+            ",Overseas Special Votes Including Defence Force - Testville,5,9,14,0\n"
+            ",Special Votes BEFORE Polling Day - Testville,6,7,13,0\n,Special Votes ON Polling Day - Testville,4,6,10,0\n"
+            ",Testville Total,125,122,247,2\n")
+    path = tmp_path / "a.csv"
+    path.write_text(good, encoding="utf-8")
+    name, votes = read_party_csv(path)
+    assert name == "Testville"
+    assert votes["Labour Party"] == {"ordinary": 100, "overseas": 9, "before": 7, "on": 6}
+    path.write_text(good.replace("125,122", "126,122"), encoding="utf-8")
+    with pytest.raises(ValueError, match="add up"):
+        read_party_csv(path)
+    names = PartyNames(CFG["parliament"]["parties"])
+    assert names.group("Maori Party") == names.group("Te Pāti Māori") == "Te Pāti Māori"
+    assert names.group("The Opportunities Party (TOP)") == "Opportunity" and names.group("Ban1080") == "Other"
+
+
+def test_election_night_house_and_margin_arithmetic():
+    """The election-night count gives the published House, and the routes' weights explain every change of margin."""
+    from pollofpolls.specials import parliament as parl
+    base = parl.elect(NIGHT_VOTES, NIGHT_SEATS, PARTIES)
+    assert base.seats[0].tolist() == [42, 36, 16, 13, 12, 7, 5, 0] and base.size[0] == 131
+    assert base.entitlement[0, 0] == 35 and base.entitlement[0, 6] == 1
+    assert parl.margin(base, GOV)[0] == 3 and parl.outcome(base, GOV, OPP)[0] == 0
+    rng = np.random.default_rng(1)
+    votes = NIGHT_VOTES * np.exp(rng.normal(0, 0.04, (400, 8)))
+    seats = np.tile(NIGHT_SEATS, (400, 1))
+    flips = rng.integers(-2, 3, 400)                       # National and Labour swap electorates
+    seats[:, 0] -= flips
+    seats[:, 1] += flips
+    seats[:, 6] -= rng.integers(0, 2, 400)                 # Te Pāti Māori loses one to the Greens
+    seats[:, 2] += NIGHT_SEATS[6] - seats[:, 6]
+    house = parl.elect(votes, seats, PARTIES)
+    comps = parl.components(house, base, GOV)
+    assert {c.key for c in comps} == {"entitlement:National", "electorates:National", "list:ACT", "list:NZ First",
+                                      "overhang:Te Pāti Māori"}
+    explained = sum(c.weight * c.lost for c in comps)
+    assert np.array_equal(3 - parl.margin(house, GOV), explained)
+    r = parl.paths(house, base, GOV, OPP)
+    assert len(r["minimal"]) == 14 and r["seats_of_margin_needed"] == 4
+    odds = parl.summarise(house, base, GOV, OPP)["outcome"]
+    assert abs(odds["opposition"] - r["p_margin_exactly_needed"] - r["p_margin_more_than_needed"]) < 1e-12
+
+
+def test_party_vote_simulation_follows_the_lean():
+    from pollofpolls.specials import partyvote as pv
+    rng = np.random.default_rng(0)
+    n, K = 2000, len(PARTIES)
+    spec, ov = np.full(n, 370000.0), np.full(n, 95000.0)
+    flat = pv.simulate_party_votes(NIGHT_VOTES, np.zeros((n, 2, K - 1)), spec, ov, rng)
+    share = lambda v: v[:, 1].sum() / v.sum()             # noqa: E731
+    assert np.allclose(flat.final.sum(1), NIGHT_VOTES.sum() + 370000)
+    assert abs(share(flat.specials.sum(1)) - NIGHT_VOTES[1] / NIGHT_VOTES.sum()) < 0.002
+    lean = np.zeros((n, 2, K - 1))
+    lean[:, :, 0] = 0.3                                    # every category leans to Labour
+    assert share(pv.simulate_party_votes(NIGHT_VOTES, lean, spec, ov, rng).specials.sum(1)) > share(
+        flat.specials.sum(1)) + 0.04
+    kappa = np.zeros((n, K - 1))
+    kappa[:, 0] = -0.3                                     # the enrolment change moves domestic specials only
+    moved = pv.simulate_party_votes(NIGHT_VOTES, np.zeros((n, 2, K - 1)), spec, ov, rng, kappa=kappa)
+    assert moved.specials[:, 1, 1].sum() < flat.specials[:, 1, 1].sum() * 0.9
+    assert abs(moved.specials[:, 0, 1].sum() / flat.specials[:, 0, 1].sum() - 1) < 0.01
+    # the link to the seats: Labour's own lean, and everyone else's pooled
+    z = pv.link_covariate(lean, NIGHT_VOTES, 1)
+    assert np.allclose(z[:, 0], 0.3) and np.allclose(z[:, 1], 0.0)
+
+
+def test_party_vote_history_and_fit():
+    """The national table has six elections that add up, and the fit finds the Greens' overseas lean."""
+    from pollofpolls.specials import national as natdata
+    from pollofpolls.specials import partyvote as pv
+    names = natdata.PartyNames(CFG["parliament"]["parties"])
+    h = natdata.load_history(ROOT / CFG["parliament"]["data_dir"], names, before=CFG["election"])
+    assert h.years == [2008, 2011, 2014, 2017, 2020, 2023]
+    t = h.year_index(2023)
+    assert h.final[t].sum() == 2851211 and round(100 * h.final[t, 0] / h.final[t].sum(), 2) == 38.08
+    assert not np.isnan(h.prelim[t]).any() and np.isnan(h.prelim[h.year_index(2014)]).all()
+    d = pv.build_party_vote_data(h, "Labour")
+    opp = h.parties.index("Opportunity") - 1
+    assert not d.stood[h.year_index(2014), opp] and d.stood[t, opp]
+    change = pv.ordinary_change(h)
+    assert change["n"] == 3 and 0.01 < change["growth_mean"] < 0.03
+    post = pv.fit_party_vote(d, CFG["parliament"]["priors"], {"chains": 1, "warmup": 300, "samples": 300, "seed": 1})
+    green = h.parties.index("Green") - 1
+    assert 0.7 < post["mu"][:, 0, green].mean() < 1.3     # overseas votes lean well towards the Greens
+    assert 0.2 < post["mu"][:, 0, opp].mean() < 1.5       # ... and are not distorted by the years it did not stand
+    draws = pv.draw_lean(post, d, 500, np.random.default_rng(0))
+    assert draws.shape == (500, 2, len(h.parties) - 1) and np.isfinite(draws).all()
+    replay = pv.draw_lean(post, d, 50, np.random.default_rng(0), year=2020)
+    assert np.allclose(replay[:, :, green], d.y[h.year_index(2020), :, green])
+
+
+def test_linked_model_needs_the_national_lean():
+    from pollofpolls.specials.simulate import election_shift
+    n = 50
+    p = {"sigma_year": np.full((n, 2), 0.05), "L_year": np.tile(np.eye(2), (n, 1, 1)),
+         "sigma_yc": np.full((n, 2), 0.05), "link_slope": np.ones((n, 2))}
+    with pytest.raises(ValueError, match="national"):
+        election_shift(p, None, None, np.random.default_rng(0))
+    z = np.tile([0.4, -0.2], (n, 1))
+    alpha, _ = election_shift(p, None, None, np.random.default_rng(0), z)
+    assert abs(alpha[:, 0].mean() - 0.4) < 0.03 and abs(alpha[:, 1].mean() + 0.2) < 0.03
+
+
 # ------------------------------------------------------------------------------------------- stage and page
 def test_page_without_a_forecast_says_how_to_make_one(tmp_path):
     from pollofpolls.report.specials import SpecialsPage, display_name
@@ -249,6 +363,7 @@ def test_stage_end_to_end(tmp_path):
     from pollofpolls.specials.run import forecast_specials
     shutil.copytree(ROOT / "config", tmp_path / "config")
     shutil.copytree(DATA, tmp_path / CFG["data_dir"])
+    shutil.copytree(ROOT / CFG["parliament"]["data_dir"], tmp_path / CFG["parliament"]["data_dir"])
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
     cfg = Config(tmp_path)
     summary = forecast_specials(cfg, quick=True, run_backtest=False)
@@ -265,6 +380,24 @@ def test_stage_end_to_end(tmp_path):
     for f in ["forecast.json", "seats.csv", "candidates.csv", "history.csv", "margins.npz"]:
         assert (out / f).exists(), f
     page = SpecialsPage(tmp_path)
-    assert page.available and "Hutt South" in page.seat_table() and "399,000" in page.intro()
+    assert page.available and "Hutt South" in page.seat_table() and "399,365" in page.intro()
     assert page.figure("margins").data and page.figure("needs", narrow=True).data
     assert page.facts()["n_cases"] == "12"
+    # the House: probabilities add up, election night is reproduced, and the routes account for the result
+    h = summary["house"]
+    assert abs(sum(h["outcome"].values()) - 1) < 1e-9 and abs(sum(h["margin"].values()) - 1) < 1e-9
+    assert h["size_election_night"] == 131 and h["margin_election_night"] == 3
+    assert {s["party"]: s["election_night"] for s in h["seats"]}["NZ First"] == 12
+    r = h["routes"]
+    assert r["seats_of_margin_needed"] == 4 and len(r["minimal"]) == 14
+    assert abs(r["p_margin_exactly_needed"] + r["p_margin_more_than_needed"] - h["outcome"]["opposition"]) < 1e-9
+    assert r["p_minimal"] <= r["p_margin_exactly_needed"] + 1e-9
+    assert abs(sum(p["election_night_share"] for p in h["party_vote"]) - 1) < 1e-9
+    assert {s["name"] for s in h["other_seats"]} >= {"Nelson", "Whangārei"}
+    assert set(h["scenarios"]) == set(summary["scenarios"])
+    assert "link_slope" in summary["posterior"]
+    for f in ["party_votes.csv", "routes.csv", "party_vote_history.csv"]:
+        assert (out / f).exists(), f
+    assert "NZ First" in page.party_vote_table() and "14 ways" in page.routes_text()
+    assert "NZ First" in page.house_seats_table() and "Nelson" in page.other_seats_table()
+    assert page.figure("house").data and page.house_tiles().count(".tile}") == 3

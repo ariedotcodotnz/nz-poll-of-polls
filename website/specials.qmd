@@ -1,6 +1,6 @@
 ---
-title: "Special votes in the close seats"
-subtitle: "How the official count could change the electorates still in doubt after the {{< var election.year >}} election"
+title: "Special votes"
+subtitle: "How the official count could change the House and the closest electorates after the {{< var election.year >}} election"
 ---
 
 ```{python}
@@ -11,13 +11,79 @@ page = SpecialsPage()
 f = page.facts()
 ```
 
+## Who has the numbers
+
+```{python}
+#| output: asis
+print(page.house_intro())
+print(page.house_tiles())
+print(page.house_caveat())
+```
+
+Each bar is the share of simulated official counts that ended with that margin between the Government's seats and
+everyone else's. Zero is a tie.
+
+```{python}
+#| classes: wide-only
+page.show("house")
+```
+
+```{python}
+#| classes: narrow-only
+page.show("house", narrow=True)
+```
+
+### The party vote and seats
+
+```{python}
+#| output: asis
+print(page.party_vote_table())
+```
+
+*Of special votes* is the share of the special party votes the model expects each party to win.
+
+```{python}
+#| output: asis
+print(page.house_seats_table())
+```
+
+A seat count in bold differs from election night; only the five likeliest counts with at least a 3% chance are shown. National and Te Pāti Māori hold more electorates than their party votes entitle
+them to, so their seats are their electorates and the House has more than 120 members.
+
+### How the majority could change
+
+```{python}
+#| output: asis
+print(page.routes_text())
+```
+
+The combinations simulated most often, whatever their result. *Margin* is the Government's seats minus every
+other party's; *majority lost* means the other parties have a majority.
+
+```{python}
+#| output: asis
+print(page.routes_table())
+```
+
+### If the special votes break like a past election
+
+```{python}
+#| output: asis
+print(page.house_scenario_table())
+```
+
+Each row replays how one past election's special votes differed from its ordinary votes, for every party and in
+the close seats, on this year's election-night count and this year's number of special votes.
+
+## The close seats
+
 ```{python}
 #| output: asis
 print(page.intro())
 print(page.tiles())
 ```
 
-## Who wins each seat
+### Who wins each seat
 
 ```{python}
 #| output: asis
@@ -68,7 +134,7 @@ page.show("needs")
 page.show("needs", narrow=True)
 ```
 
-### If the special votes break like a past election
+### The close seats under a past election's pattern
 
 ```{python}
 #| output: asis
@@ -84,6 +150,13 @@ leaves out the effect of the 2025 enrolment change described [below](#method).
 ```{python}
 #| output: asis
 print(page.joint_text())
+```
+
+### Other seats within reach
+
+```{python}
+#| output: asis
+print(page.other_seats_table())
 ```
 
 ## Each seat
@@ -104,8 +177,9 @@ simulation draws all three.
 relative to the country's: `{python} f.get("most_specials", "–")` has had about `{python} f.get("most_ratio", "–")`
 per 100 ordinary votes, `{python} f.get("fewest_specials", "–")` about `{python} f.get("fewest_ratio", "–")`. The
 model learns each seat's level and moves it with the national figure. The Commission estimates `{python} f.get("estimate", "–")` special votes still to
-count; its election-night estimates have fallen short of the final count by 5 to 6% (2020 and 2023), so the model
-expects about `{python} f.get("final_specials", "–")`. That is `{python} f.get("ratio", "–")`% as many per
+count. Its election-night estimates fell short of the final count by 5 to 6% in 2020 and 2023, but this time more
+may be disallowed from people not enrolled by the new deadline, so the model expects about
+`{python} f.get("final_specials", "–")`, give or take 10%. That is `{python} f.get("ratio", "–")`% as many per
 ordinary vote as in 2023.
 
 **How the special votes split.** Each seat's special votes are modelled as a shift from its own ordinary votes,
@@ -120,15 +194,38 @@ $\alpha$ this election's national shift, $\gamma_c$ how far overseas and domesti
 the seat's own lasting difference and $\varepsilon_{s,c}$ the rest. Special votes are then drawn from a multinomial
 distribution with shares $\operatorname{softmax}(0, \eta_{s,c})$. Fitted to past elections, the national shift of
 domestic special votes towards {{< var specials.second >}}’s candidate was `{python} f.get("past", "–")` points in an
-evenly split seat. This year's is a fresh draw from that spread, with Student-t tails because three elections cannot
-bound it: `{python} f.get("shift_med", "–")` points (90% interval `{python} f.get("shift_lo", "–")` to
+evenly split seat. This year's follows the country's party-vote lean drawn in the same simulation (next
+paragraph), plus a seat-level remainder with Student-t tails: `{python} f.get("shift_med", "–")` points (90% interval `{python} f.get("shift_lo", "–")` to
 `{python} f.get("shift_hi", "–")`).
+
+**The party vote.** The same idea is applied to the country's party votes at the `{python} f.get("h_n_years", "–")`
+elections from `{python} f.get("h_years", "–")`: for each party, how much its share of overseas and of domestic
+special votes differed from its share of ordinary votes, relative to {{< var specials.first >}}. Each election
+has a shift common to every party (National's own good or bad year among special voters, standard deviation about
+`{python} f.get("h_common_sd", "–")` on the log-ratio scale) and a shift for each party. This year's are new draws,
+applied to the election-night party votes and about `{python} f.get("h_valid", "–")` valid special party votes
+(90%: `{python} f.get("h_valid_lo", "–")` to `{python} f.get("h_valid_hi", "–")`). Overseas votes are a much larger
+part of them than usual, which matters because overseas votes have favoured the Greens and Opportunity most. The
+official count has also added about `{python} f.get("h_added", "–")`% to the election-night party votes before any
+special vote (`{python} f.get("h_added_n", "–")` archived counts), leaning slightly away from National; the model
+repeats that. The close seats' shift is tied to the party-vote lean with a fitted slope (about
+`{python} f.get("h_link", "–")`), so a count whose special votes are bad for National is bad for it in the seats
+too. Seats then follow by the Sainte-Laguë formula with the 5% threshold and overhang, using the simulated winner
+of `{python} f.get("h_modelled", "–")` electorates and the election-night leader of the rest.
+
+How much more (or less) of the special votes than of the ordinary votes each party won, in points:
+
+```{python}
+#| output: asis
+print(page.house_history_table())
+```
 
 **The 2025 enrolment change.** The Electoral Amendment Act 2025 closed enrolment 13 days before election day, so
 nobody could enrol while voting. Those voters used to cast special votes in New Zealand; the national figures imply
 about `{python} f.get("removed", "–")`% of the domestic special votes are gone. They are mostly young and recently
 moved, so the model assumes, as an editorial judgement, that they leaned away from {{< var specials.first >}}
-compared with the special votes that remain. That moves the domestic special votes about
+compared with the special votes that remain, and towards Labour, the Greens, Te Pāti Māori and Opportunity in the
+party vote. In the close seats that moves the domestic special votes about
 `{python} f.get("enrol_pp", "–")` points towards {{< var specials.first >}} (90%: `{python} f.get("enrol_lo", "–")`
 to `{python} f.get("enrol_hi", "–")`). The assumption is in
 [`config/specials.yml`](https://github.com/ariedotcodotnz/nz-poll-of-polls/blob/main/config/specials.yml).
@@ -161,6 +258,8 @@ print(page.backtest_table())
 ```{python}
 #| output: asis
 print(page.backtest_text())
+print()
+print(page.house_backtest_text())
 ```
 
 ## Special votes in these seats since 2017
@@ -186,7 +285,8 @@ print(page.notes())
 print(page.downloads())
 ```
 
-Sources: Electoral Commission results by voting place (official results 2017–2023, preliminary results 2026);
-election-night counts for 2017 and 2023 from the Commission's archived pages, via the Internet Archive; national
+Sources: Electoral Commission results by voting place (official results 2008–2023, preliminary results 2026);
+the 2026 preliminary party votes and electorate leads as republished by RNZ and Wikipedia;
+election-night counts for 2017, 2020 and 2023 from the Commission's archived pages, via the Internet Archive; national
 special-vote figures from the Commission's official-results releases and its 8 November 2026 estimate; candidates'
 parties from Wikipedia's list of 2026 candidates by electorate.

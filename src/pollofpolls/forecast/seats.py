@@ -33,9 +33,9 @@ def allocate_seats(votes: dict[str, float], electorates: dict[str, int] | None =
     return {p: max(alloc[p], int(electorates.get(p, 0))) for p in votes}
 
 
-def allocate_seats_matrix(votes: np.ndarray, electorates: np.ndarray, nseats: int = 120, threshold: float = 0.05,
-                          independent_seats: np.ndarray | None = None) -> np.ndarray:
-    """Vectorised allocation for many simulations. votes (S, K) proportions; electorates (S, K) ints."""
+def entitlement_matrix(votes: np.ndarray, electorates: np.ndarray, nseats: int = 120, threshold: float = 0.05,
+                       independent_seats: np.ndarray | None = None) -> np.ndarray:
+    """Seats each party's vote entitles it to, before overhang. votes (S, K) proportions; electorates (S, K) ints."""
     S, K = votes.shape
     independent_seats = np.zeros(S, dtype=int) if independent_seats is None else independent_seats
     out = np.zeros((S, K), dtype=int)
@@ -51,5 +51,10 @@ def allocate_seats_matrix(votes: np.ndarray, electorates: np.ndarray, nseats: in
         pool = max_pool - int(independent_seats[s])
         top = rows[s, :pool]
         out[s] = np.bincount(top, minlength=K)
-    out = np.where(qualifying, out, 0)
-    return np.maximum(out, electorates)
+    return np.where(qualifying, out, 0)
+
+
+def allocate_seats_matrix(votes: np.ndarray, electorates: np.ndarray, nseats: int = 120, threshold: float = 0.05,
+                          independent_seats: np.ndarray | None = None) -> np.ndarray:
+    """Vectorised allocation for many simulations, including overhang: a party keeps every electorate it won."""
+    return np.maximum(entitlement_matrix(votes, electorates, nseats, threshold, independent_seats), electorates)

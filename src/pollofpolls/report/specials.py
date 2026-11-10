@@ -18,7 +18,9 @@ from ..config import Config
 from . import charts
 from .site import PLOTLY_CONFIG, esc, long_date, num, prob, swatch, table
 
-DOWNLOADS = ["forecast.json", "seats.csv", "candidates.csv", "history.csv", "backtest.csv", "backtest_summary.csv"]
+DOWNLOADS = ["forecast.json", "party_votes.csv", "routes.csv", "seats.csv", "candidates.csv", "history.csv",
+             "party_vote_history.csv", "backtest.csv", "backtest_summary.csv", "party_vote_backtest.csv"]
+OUTCOME_ORDER = ("government", "neither", "opposition")
 YEAR_SYMBOLS = ["circle", "square", "diamond", "triangle-up", "cross"]
 
 
@@ -88,7 +90,8 @@ class SpecialsPage:
             return {k: z[k] for k in z.files}
 
     def colour(self, party: str) -> str:
-        return self.colours.get(party, charts.DEFAULT_COLOUR)
+        alias = ((self.data or {}).get("house") or {}).get("colours", {}).get(party, party)
+        return self.colours.get(party) or self.colours.get(alias, charts.DEFAULT_COLOUR)
 
     def margin_text(self, m: float) -> str:
         """A margin (pair[1] minus pair[0]) in words: "Labour by 508"."""
@@ -306,7 +309,7 @@ class SpecialsPage:
             f |= {"bt_crps": num(m["crps_votes"]), "bt_best": best["label"].lower(),
                   "bt_best_crps": num(best["crps_votes"]), "bt_n": str(m["n_cases"]),
                   "bt_cov90": num(m["coverage_90"] * 100, 0), "bt_cov50": num(m["coverage_50"] * 100, 0)}
-        return f
+        return f | self.house_facts()
 
     @cached_property
     def _config(self) -> dict:
@@ -365,11 +368,255 @@ class SpecialsPage:
             return ""
         return "- Special votes: " + " · ".join(f"[{esc(f)}](specials/{f})" for f in files) + "\n"
 
+    # ------------------------------------------------------------------------------------- the House
+    @property
+    def house(self) -> dict | None:
+        return (self.data or {}).get("house")
+
+    def outcome_label(self, key: str, short: bool = False) -> str:
+        h = self.house
+        if key == "neither":
+            return "Exact tie" if short else "Neither side has a majority (an exact tie)"
+        label = esc(h[key]["label"])
+        return label if short else f"{label} have a majority"
+
+    def house_intro(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        gov, opp = h["government"], h["opposition"]
+        seats = {s["party"]: s["election_night"] for s in h["seats"]}
+        g, o = sum(seats.get(p, 0) for p in gov["parties"]), sum(seats.get(p, 0) for p in opp["parties"])
+        size, nat = h["size_election_night"], self.data["national"]
+        return (f"On election night {esc(gov['label'])} had {g} of {size} seats, {g - size // 2 - 1} more than "
+                f"the {size // 2 + 1} a majority needs, and {esc(opp['label'])} had {o}. About "
+                f"{votes(nat['estimate'])} special votes are still to be counted, {votes(nat['overseas_estimate'])} "
+                f"of them from overseas. They change each party's share of the party vote, which sets how many "
+                f"seats it is entitled to, and they decide the closest electorates. This section simulates both "
+                f"together and counts how often each side ends with a majority.\n")
+
+    def house_tiles(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        out = []
+        for key in OUTCOME_ORDER:
+            out.append(f"::: {{.tile}}\n[{self.outcome_label(key, short=True)}]{{.tile-label}}\n\n"
+                       f"[{prob(h['outcome'][key])}]{{.tile-value}}\n\n"
+                       f"[{'keep a majority' if key == 'government' else 'hung Parliament' if key == 'neither' else 'have a majority'}]"
+                       f"{{.tile-label}}\n:::")
+        return ":::: {.tiles}\n" + "\n\n".join(out) + "\n::::\n"
+
+    def house_caveat(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        lost = h["outcome"]["neither"] + h["outcome"]["opposition"]
+        return (f"The chance that {esc(h['government']['label'])} lose their majority is {prob(lost)}: a tie or a "
+                f"majority for the other parties. A majority for {esc(h['opposition']['label'])} is not a Labour-led "
+                f"government unless all four agree to one, and Opportunity has said it could work with either "
+                f"Labour or National.\n")
+
+    def _seat_cell(self, dist: dict[str, float], base: int) -> str:
+        items = sorted(((int(k), p) for k, p in dist.items() if p >= 0.03), key=lambda kp: -kp[1])[:5]
+        return " · ".join((f"**{k}** ({prob(p)})" if k != base else f"{k} ({prob(p)})") for k, p in items)
+
+    def party_vote_table(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        rows = []
+        for r in h["party_vote"]:
+            f, c = r["final_share"], r["change_pp"]
+            rows.append([f"{swatch(self.colour(r['party']))}**{esc(r['party'])}**",
+                         f"{num(r['election_night_share'] * 100, 2)}%",
+                         f"{num(r['special_share']['q50'] * 100, 1)}%",
+                         f"**{num(f['q50'] * 100, 2)}%** [({num(f['q05'] * 100, 1)}–{num(f['q95'] * 100, 1)})]{{.muted}}",
+                         signed(c["q50"], "+.2f")])
+        return table(["Party", "Election night", "Of special votes", "Official count (90%)", "Change (points)"], rows)
+
+    def house_seats_table(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        rows = [[f"{swatch(self.colour(s['party']))}**{esc(s['party'])}**", str(s["election_night"]),
+                 self._seat_cell(s["seats"], s["election_night"])] for s in h["seats"]]
+        return table(["Party", "Election night", "Official count: seats (chance)"], rows)
+
+    def routes_table(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        result = {"government": "Majority kept", "neither": "Exact tie", "opposition": "Majority lost"}
+        rows = [["; ".join(esc(x) for x in r["steps"]), signed(r["margin"], "+.0f") if r["margin"] else "0",
+                 result[r["outcome"]], f"**{num(r['p'] * 100, 1)}%**"] for r in h["routes"]["top"]]
+        return table(["What changes from election night", "Margin", "Result", "Chance"], rows)
+
+    def minimal_routes_table(self) -> str:
+        h = self.house
+        if not h or not h["routes"]["minimal"]:
+            return ""
+        r = h["routes"]
+        rows = [["; ".join(esc(x) for x in m["steps"]),
+                 f"**{num(m['p'] * 100, 1)}%**" if m["p"] >= 0.0005 else "under 0.1%"] for m in r["minimal"]]
+        rows.append(["**Any of these exactly**", f"**{num(r['p_minimal'] * 100, 1)}%**"])
+        return table(["Route", "Chance"], rows)
+
+    def routes_text(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        r, o = h["routes"], h["outcome"]
+        weights = {c["kind"]: c["weight"] for c in r["components"]}
+        return (f"The Government's margin over every other party was {r['margin_election_night']} seats on election "
+                f"night. A list seat lost by a governing party that has list seats moves the margin by "
+                f"{weights.get('list', 2)}, because another party gains the seat. National holds more electorates "
+                f"than its party vote entitles it to, so its changes count once: when its entitlement falls it "
+                f"keeps its electorates and another party gains a seat, and when it loses an electorate nobody "
+                f"gains one. A change of {r['seats_of_margin_needed']} gives the other parties a one-seat majority; "
+                f"{r['seats_of_margin_needed'] - 1} is a tie. There are {len(r['minimal'])} ways to make exactly "
+                f"{r['seats_of_margin_needed']}:\n\n" + self.minimal_routes_table()
+                + f"\nA count can also reach that one-seat majority with offsetting changes (National gaining an "
+                f"electorate while losing more elsewhere, or Te Pāti Māori losing one), which takes the chance of "
+                f"exactly a one-seat majority to {prob(r['p_margin_exactly_needed'])}. A bigger majority for the "
+                f"other parties has a chance of {prob(r['p_margin_more_than_needed'])}. Together these are the "
+                f"{prob(o['opposition'])} above, so the routes that go further are already counted in it.\n")
+
+    def other_seats_table(self) -> str:
+        h = self.house
+        if not h or not h.get("other_seats"):
+            return ""
+        a, b = self.pair
+        rows = [[f"**{esc(s['name'])}**", f"{esc(s['leader'])} ({esc(s['leader_party'])})",
+                 self.margin_text(s["election_night_margin"]),
+                 f"{self.margin_text(s['margin']['q05'])} to {self.margin_text(s['margin']['q95'])}",
+                 f"**{prob(s['p_flip'])}**"]
+                for s in sorted(h["other_seats"], key=lambda s: -s["p_flip"])]
+        text = (f"Every other seat where {esc(a)}'s and {esc(b)}'s candidates are first and second within "
+                f"{h['modelled_margin']:,} votes is simulated the same way, from its election-night candidate "
+                f"votes, without voting-place detail or the seat's own history:\n\n"
+                + table(["Electorate", "Leader", "Election night", "Official margin (90%)", "Chance it changes hands"],
+                        rows))
+        if h.get("assumed_seats"):
+            items = "; ".join(f"{esc(a['electorate'])} ({prob(float(a['p_flip']))} that {esc(a['challenger'])} "
+                              f"overtakes {esc(a['leader_party'])})" for a in h["assumed_seats"])
+            text += (f"\nThree close seats are not contests between those two parties, so the model cannot simulate "
+                     f"them. Each has an assumed chance of changing hands, set in the configuration: {items}. "
+                     f"The other {h['n_electorates'] - len(h['other_seats']) - len(self.seats) - len(h['assumed_seats'])} "
+                     f"electorates are taken as won by their election-night leaders. Wellington Bays, where Labour "
+                     f"leads the Greens by 140, is one of them: either result leaves both parties' seat totals "
+                     f"unchanged.\n")
+        return text
+
+    def house_scenario_table(self) -> str:
+        h = self.house
+        if not h:
+            return ""
+        sc, years = h["scenarios"], self.data["data"]["years"]
+        names = [("model", "This forecast")] + [(f"like_{y}", f"Special votes lean as in {y}") for y in years] \
+            + [("no_enrolment_adjustment", "No enrolment adjustment")]
+        rows = [[f"**{label}**" if key == "model" else label] + [prob(sc[key][o]) for o in OUTCOME_ORDER]
+                for key, label in names if key in sc]
+        return table(["Scenario", "Government keeps its majority", "Exact tie", "Other parties have a majority"],
+                     rows)
+
+    def house_history_table(self) -> str:
+        """Past elections: each party's share of ordinary and of special votes."""
+        rows = self._csv("party_vote_history.csv")
+        h = self.house
+        if not rows or not h:
+            return ""
+        parties = [p for p in h["parties"] if p != "Other"]
+        years = sorted({r["year"] for r in rows})
+        by = {(r["year"], r["party"]): r for r in rows}
+        body = []
+        for y in years:
+            cells = [y]
+            for p in parties:
+                r = by.get((y, p))
+                cells.append(signed(100 * (float(r["special_share"]) - float(r["ordinary_share"]))) if r else "–")
+            body.append(cells)
+        return table(["Election"] + [esc(p) for p in parties], body)
+
+    def house_backtest_text(self) -> str:
+        bt = (self.house or {}).get("backtest")
+        if not bt:
+            return ""
+        mae, labels = bt["mae_pp"], bt["labels"]
+        text = (f"**The party vote.** Each of the {len(bt['years'])} elections from {bt['years'][0]} to "
+                f"{bt['years'][-1]} was forecast with the model refitted on the others. The model's median missed a "
+                f"party's final share by {num(mae['model'], 2)} points on average, against "
+                f"{num(mae['election_night'], 2)} for assuming {esc(labels['election_night'].lower())} and "
+                f"{num(mae['average'], 2)} for the {esc(labels['average'].lower())}. Its 50% and 90% intervals held "
+                f"{num(bt['coverage_50'] * 100, 0)}% and {num(bt['coverage_90'] * 100, 0)}% of the "
+                f"{bt['n_cases']} results.")
+        s = bt.get("seats")
+        if s:
+            text += (f" Given the electorates each party won, the model's most likely seat count was right for "
+                     f"{num(s['model_right'] * 100, 0)}% of parties, against {num(s['election_night_right'] * 100, 0)}% "
+                     f"for the election-night count; {s['n_changed']} of {s['n_cases']} seat counts changed.")
+            if s.get("mean_p_actual_when_changed") is not None:
+                text += (f" When a party's seats did change, the model had given the final number a "
+                         f"{num(s['mean_p_actual_when_changed'] * 100, 0)}% chance on average.")
+        return text + "\n"
+
+    def house_facts(self) -> dict[str, str]:
+        h = self.house
+        if not h:
+            return {}
+        m, oc = h["model"], h["ordinary_change"]
+        sp = h["special_party_votes"]
+        return {"h_years": f"{h['years'][0]} to {h['years'][-1]}", "h_n_years": str(len(h["years"])),
+                "h_common_sd": num(m["common_sd"]["q50"], 2),
+                "h_valid": votes(round(sp["valid"]["q50"], -3)), "h_valid_lo": votes(round(sp["valid"]["q05"], -3)),
+                "h_valid_hi": votes(round(sp["valid"]["q95"], -3)),
+                "h_added": num(oc["growth_mean"] * 100, 1), "h_added_n": str(oc["n"]),
+                "h_link": num(self.data["posterior"].get("link_slope", {}).get("q50", float("nan")), 1),
+                "h_gov": h["government"]["label"], "h_opp": h["opposition"]["label"],
+                "h_modelled": str(len(h.get("other_seats", [])) + len(self.seats))}
+
+    def house_figure(self, narrow: bool = False):
+        """The distribution of the Government's margin over every other party, coloured by who has a majority."""
+        import plotly.graph_objects as go
+
+        h = self.house
+        gov, opp = h["government"], h["opposition"]
+        dist = sorted((int(k), p * 100) for k, p in h["margin"].items())
+        dist = [(k, p) for k, p in dist if p >= 0.05]
+        groups = [("government", [kp for kp in dist if kp[0] > 0], self.colour(gov["parties"][0]),
+                   f"{gov['label']} majority"),
+                  ("neither", [kp for kp in dist if kp[0] == 0], charts.MUTED, "Exact tie"),
+                  ("opposition", [kp for kp in dist if kp[0] < 0], self.colour(opp["parties"][0]),
+                   "Majority for the other parties" if narrow else f"{opp['label']} majority")]
+        fig = go.Figure()
+        for _key, pts, colour, name in groups:
+            if not pts:
+                continue
+            fig.add_trace(go.Bar(
+                x=[k for k, _ in pts], y=[p for _, p in pts], name=name, width=0.84,
+                marker=dict(color=colour, line=dict(width=0)),
+                text=[f"{p:.0f}%" if p >= 1 else "" for _, p in pts], textposition="outside", cliponaxis=False,
+                textfont=dict(size=11, color=charts.INK),
+                hovertemplate=[(f"Government {k:+d} seats against the rest" if k else "Seats tied")
+                               + f": {p:.1f}% of simulations<extra></extra>" for k, p in pts]))
+        night = h["margin_election_night"]
+        top = max(p for _, p in dist)
+        fig.add_annotation(x=night, y=top * 1.2, text="election night", showarrow=True, arrowhead=0, ax=0,
+                           ay=-18, yanchor="bottom", font=dict(size=11, color=charts.MUTED),
+                           arrowcolor=charts.MUTED)
+        fig.update_xaxes(tickmode="linear", dtick=1 if not narrow else 2, tickformat="+d", zeroline=False,
+                         showgrid=False, title_text="Government seats minus every other party's")
+        fig.update_yaxes(range=[0, top * 1.35], ticksuffix="%", gridcolor=charts.GRID, zeroline=False, nticks=5)
+        fig.update_layout(height=340 if not narrow else 320, margin=dict(l=40, r=12, t=20, b=50), bargap=0.16,
+                          plot_bgcolor="white", paper_bgcolor="white", font=charts.FONT, dragmode=False,
+                          legend=dict(orientation="h", y=-0.28 if not narrow else -0.4, x=0, traceorder="normal"))
+        return charts._no_zoom(fig)
+
     # --------------------------------------------------------------------------------------- figures
     def show(self, name: str, narrow: bool = False) -> None:
         from IPython.display import HTML, display
 
-        if not self.available:
+        if not self.available or (name == "house" and not self.house):
             return
         import plotly.offline
 
@@ -382,7 +629,7 @@ class SpecialsPage:
         display(HTML(html))
 
     def figure(self, name: str, narrow: bool = False):
-        return {"margins": self.margin_figure, "needs": self.needs_figure}[name](narrow)
+        return {"margins": self.margin_figure, "needs": self.needs_figure, "house": self.house_figure}[name](narrow)
 
     def margin_figure(self, narrow: bool = False):
         """The distribution of each seat's final margin: one row per seat, coloured by who is ahead."""

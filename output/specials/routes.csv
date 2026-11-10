@@ -1,0 +1,27 @@
+kind,route,probability,outcome
+top,National's party-vote entitlement falls by 1; National loses 2 electorates net; NZ First loses 1 list seat,0.10325,opposition
+top,National's party-vote entitlement falls by 1; NZ First loses 1 list seat,0.08745,neither
+top,National gains 1 electorate net; NZ First loses 1 list seat,0.08195,government
+top,National's party-vote entitlement falls by 1; National loses 1 electorate net; NZ First loses 1 list seat,0.0816,opposition
+top,NZ First loses 1 list seat,0.07995,government
+top,National's party-vote entitlement falls by 1; National gains 1 electorate net; NZ First loses 1 list seat,0.0431,government
+top,National loses 1 electorate net; NZ First loses 1 list seat,0.0389,neither
+top,National's party-vote entitlement falls by 1; National loses 3 electorates net; NZ First loses 1 list seat,0.03485,opposition
+top,National's party-vote entitlement falls by 1,0.03345,government
+top,National loses 2 electorates net; NZ First loses 1 list seat,0.0283,opposition
+top,National's party-vote entitlement falls by 1; National loses 2 electorates net,0.0247,neither
+top,National's party-vote entitlement falls by 1; National loses 1 electorate net,0.02265,government
+minimal,National's party-vote entitlement falls by 1; National loses 1 electorate net; NZ First loses 1 list seat,0.0816,opposition
+minimal,National loses 2 electorates net; NZ First loses 1 list seat,0.0283,opposition
+minimal,National's party-vote entitlement falls by 1; National loses 3 electorates net,0.00755,opposition
+minimal,National's party-vote entitlement falls by 2; National loses 2 electorates net,0.0049,opposition
+minimal,ACT loses 1 list seat; NZ First loses 1 list seat,0.0033,opposition
+minimal,National's party-vote entitlement falls by 2; NZ First loses 1 list seat,0.0018,opposition
+minimal,National's party-vote entitlement falls by 1; National loses 1 electorate net; ACT loses 1 list seat,0.00155,opposition
+minimal,National loses 2 electorates net; ACT loses 1 list seat,0.00045,opposition
+minimal,National loses 4 electorates net,0.0001,opposition
+minimal,National's party-vote entitlement falls by 2; ACT loses 1 list seat,5e-05,opposition
+minimal,National's party-vote entitlement falls by 3; National loses 1 electorate net,5e-05,opposition
+minimal,NZ First loses 2 list seats,0.0,opposition
+minimal,ACT loses 2 list seats,0.0,opposition
+minimal,National's party-vote entitlement falls by 4,0.0,opposition

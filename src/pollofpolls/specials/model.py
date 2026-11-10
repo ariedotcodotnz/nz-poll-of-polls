@@ -14,7 +14,10 @@ or domestic, domestic being the "before" and "on polling day" rows together):
                   mu_c     mean shift of the category
                   alpha_t  election-wide shift, correlated across the two log-ratios (LKJ). This is the
                            counterpart of the poll model's industry-wide error: for the forecast election it is a
-                           fresh draw, with Student-t tails, from the spread of past elections
+                           fresh draw, with Student-t tails, from the spread of past elections. When the
+                           country's party-vote lean is given (``national``, from the party-vote model),
+                           alpha_t = slope * national_t + a residual with that structure, so the close seats
+                           move with the national special vote and learn its spread from more elections
                   gamma_tc how far overseas and domestic specials move apart in one election
                   beta_e   the seat's persistent difference, eps_ic everything else
                   The counts are multinomial; eps absorbs any overdispersion.
@@ -80,6 +83,7 @@ class SpecialsData:
     counts: np.ndarray              # (I, C, 3) special votes by category and group
     ordinary: np.ndarray            # (I, 3) official ordinary votes by group
     prelim: np.ndarray              # (I, 3) election-night count, NaN where not archived
+    national: np.ndarray | None = None   # (T, 2) the country's party-vote lean each election, centred
 
     @property
     def n_rows(self) -> int:
@@ -106,9 +110,11 @@ class SpecialsData:
         return self.years.index(year)
 
 
-def build_specials_data(counts: list[ElectorateCount], pair: list[str]) -> SpecialsData:
+def build_specials_data(counts: list[ElectorateCount], pair: list[str],
+                        national: dict[int, np.ndarray] | None = None) -> SpecialsData:
     """Arrays for the special-vote model from official results. Seats without a candidate from both parties of
-    the pair are left out."""
+    the pair are left out. ``national`` gives each election's national party-vote lean (2,), already centred;
+    elections it does not cover are dropped from the link by leaving it out altogether."""
     rows = []
     for c in sorted(counts, key=lambda c: (c.year, c.key)):
         if not c.official:
@@ -129,7 +135,9 @@ def build_specials_data(counts: list[ElectorateCount], pair: list[str]) -> Speci
         pair=list(pair), electorates=keys, labels=[labels[k] for k in keys], years=years,
         e_idx=np.array([keys.index(c.key) for c, *_ in rows]), t_idx=np.array([years.index(c.year) for c, *_ in rows]),
         base=log_ratio(ordinary), counts=np.array([r[2] for r in rows]), ordinary=ordinary,
-        prelim=np.array([r[3] for r in rows]))
+        prelim=np.array([r[3] for r in rows]),
+        national=(np.array([national[y] for y in years], dtype=float)
+                  if national is not None and all(y in national for y in years) else None))
 
 
 @dataclass
@@ -175,10 +183,18 @@ def specials_model(data: SpecialsData, priors: dict):
 
     # composition
     mu = numpyro.sample("mu", dist.Normal(0.0, priors["category_mean_sd"]).expand([C, 2]).to_event(2))
-    sigma_year = numpyro.sample("sigma_year", dist.HalfNormal(priors["year_sd_scale"]).expand([2]).to_event(1))
+    linked = data.national is not None
+    link = priors.get("link", {})
+    year_scale = link.get("residual_sd_scale", priors["year_sd_scale"]) if linked else priors["year_sd_scale"]
+    sigma_year = numpyro.sample("sigma_year", dist.HalfNormal(year_scale).expand([2]).to_event(1))
     L_year = numpyro.sample("L_year", dist.LKJCholesky(2, priors["lkj_eta"]))
     z_year = numpyro.sample("z_year", dist.Normal(0.0, 1.0).expand([T, 2]).to_event(2))
-    alpha = numpyro.deterministic("alpha", (z_year @ L_year.T) * sigma_year)
+    alpha = (z_year @ L_year.T) * sigma_year
+    if linked:
+        slope = numpyro.sample("link_slope", dist.Normal(link.get("slope_mean", 1.0), link.get("slope_sd", 0.5))
+                               .expand([2]).to_event(1))
+        alpha = alpha + slope * jnp.asarray(data.national)
+    alpha = numpyro.deterministic("alpha", alpha)
     sigma_yc = numpyro.sample("sigma_yc", dist.HalfNormal(priors["year_category_sd_scale"]).expand([2]).to_event(1))
     z_yc = numpyro.sample("z_yc", dist.Normal(0.0, 1.0).expand([T, C, 2]).to_event(3))
     gamma = numpyro.deterministic("gamma", z_yc * sigma_yc)
@@ -239,7 +255,7 @@ def official_count_model(data: OfficialCountData, priors: dict):
 
 
 # ------------------------------------------------------------------------------------------------- fitting
-KEEP = {"specials": ["mu", "sigma_year", "L_year", "alpha", "sigma_yc", "gamma", "sigma_e", "beta", "sigma_eps",
+KEEP = {"specials": ["mu", "sigma_year", "L_year", "alpha", "link_slope", "sigma_yc", "gamma", "sigma_e", "beta", "sigma_eps",
                      "vol_year", "sigma_vol_b", "vol_e", "sigma_vol_c", "ov_year", "sigma_ov_b", "ov_e",
                      "sigma_ov_c"],
         "official_count": ["jump_prob", "small_sd", "jump_log_median", "jump_log_sd", "sigma_xi", "recheck_sd"]}

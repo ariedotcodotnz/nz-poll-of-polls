@@ -69,17 +69,17 @@ volume:
     total_votes: 2883412
     overseas_votes: 78030
   forecast:
-    # Electoral Commission, 8 Nov 2026: "around 399,000 special votes, out of the 2,832,000 total votes cast,
-    # have yet to be counted". Before the election it had expected about 700,000; enrolment closing 13 days
-    # before election day (Electoral Amendment Act 2025) removed the voters who used to enrol while voting.
-    special_votes_estimate: 399000
-    total_votes_estimate: 2832000
-    # The final count has come in above the election-night estimate: 504,621 against 480,000 in 2020 (+5.1%)
-    # and 603,257 against 567,000 in 2023 (+6.4%). Final / estimate - 1:
-    estimate_error: {mean: 0.057, sd: 0.04}
-    # Assumption: overseas (and Defence Force) votes about as many as 2023's 78,030; the enrolment change bears
-    # on voters in New Zealand.
-    overseas_votes: {mean: 78000, sd: 12000}
+    # Electoral Commission, preliminary results, 8 Nov 2026: 2,831,768 votes cast, of which an estimated
+    # 399,365 special votes, including 96,947 overseas and dictation votes, are still to be counted. Before
+    # the election it had expected about 700,000; enrolment closing 13 days before election day (Electoral
+    # Amendment Act 2025) removed the voters who used to enrol while voting.
+    special_votes_estimate: 399365
+    total_votes_estimate: 2831768
+    # The final count came in above the election-night estimate in 2020 (504,621 against 480,000, +5.1%) and
+    # 2023 (603,257 against 567,000, +6.4%). This time more special votes may be disallowed, from people who
+    # were not enrolled by the new deadline, so the centre is lower and the spread wider. Final / estimate - 1:
+    estimate_error: {mean: 0.03, sd: 0.06}
+    overseas_votes: {mean: 96947, sd: 6000}
   # The enrolment change cut late enrolees, who cluster among students and people who have just moved, so it
   # cut some electorates' specials more than others. Extra sd of each electorate's log specials-per-ordinary
   # ratio in the forecast election, on top of the year-to-year variation learned from past elections:
@@ -96,6 +96,18 @@ rule_change:
   lean:
     labour: {mean: 0.15, sd: 0.25}
     other: {mean: 0.15, sd: 0.25}
+  # The same for the party vote, each party against National. Past counts give no steady guide (special votes
+  # cast on polling day, where late enrolees were most common, leaned differently from earlier ones in a
+  # different direction each election), so these are assumptions with wide spreads. Labour's candidates and
+  # Labour's party vote share one draw. A party not listed gets no adjustment.
+  party_lean:
+    Labour: {mean: 0.15, sd: 0.25}
+    Green: {mean: 0.15, sd: 0.25}
+    Te Pāti Māori: {mean: 0.25, sd: 0.30}
+    Opportunity: {mean: 0.10, sd: 0.25}
+    ACT: {mean: 0.0, sd: 0.20}
+    NZ First: {mean: 0.0, sd: 0.20}
+    Other: {mean: 0.20, sd: 0.30}
 
 # Priors. Scales are on the log-ratio scale against National's candidate unless stated.
 priors:
@@ -108,6 +120,10 @@ priors:
   year_category_sd_scale: 0.15     # how far overseas and domestic specials move apart in one election
   electorate_sd_scale: 0.15        # a seat's persistent difference from the election-wide shift
   noise_sd_scale: 0.10             # everything else, per seat, election and category
+  link:                            # the seats' election-wide shift follows the country's party-vote lean
+    slope_mean: 1.0                # prior: one for one
+    slope_sd: 0.5
+    residual_sd_scale: 0.10        # HalfNormal scale for the sd of what the national lean does not explain
   volume:
     electorate_sd_scale: 0.5       # log specials per ordinary vote: a seat's persistent difference
     noise_sd_scale: 0.1            # ... and its year-to-year noise
@@ -120,6 +136,63 @@ priors:
                                    # South 2023), so two or three examples cannot imply absurd tails
     composition_sd_scale: 0.5      # how differently added votes split from the preliminary count
     recheck_sd_scale: 0.5          # recheck noise per candidate, in units of sqrt(votes)
+
+# The whole House: the country's party vote after the special votes, every electorate, and who has a majority.
+# Remove this section to forecast the close seats alone.
+parliament:
+  data_dir: data/reference/special-votes
+  #   party-votes.csv                past official counts: national ordinary and special party votes
+  #                                  (python -m pollofpolls.specials.national rebuilds it; docs/specials.md)
+  #   preliminary-party-votes.csv    election-night party votes, this election and archived past ones
+  #   electorates-<year>.csv         every electorate's election-night leader and margin
+  # The parties modelled one by one, National (the reference) first, with other names they are published
+  # under. Every other party is pooled as "Other" and wins no seats.
+  parties:
+    National: [National Party]
+    Labour: [Labour Party]
+    Green: [Green Party, Greens]
+    ACT: [ACT New Zealand]
+    NZ First: [New Zealand First Party]
+    Opportunity: [The Opportunities Party (TOP), TOP]
+    Te Pāti Māori: [Māori Party, Maori Party]
+  colours: {Opportunity: TOP}       # a party drawn in the colour config/elections.yml gives another name
+  seats: 120
+  threshold: 0.05
+  # The two sides. "government" has a majority with more than half the House; so does "opposition"; anything
+  # else (an exact tie, when the two sides hold every seat) is "neither". Opportunity has said it could work
+  # with either Labour or National, so a majority for the second group means the Government has lost its own
+  # and Labour could govern only with Opportunity, not that it will.
+  government: {label: "National, ACT and NZ First", parties: [National, ACT, NZ First]}
+  opposition: {label: "Labour, the Greens, Te Pāti Māori and Opportunity",
+               parties: [Labour, Green, Te Pāti Māori, Opportunity]}
+  # Seats where National's and Labour's candidates are first and second and this close are simulated with
+  # the electorate model, from the candidate counts in electorates-<year>.csv (the seats under `electorates`
+  # above use their own files). Beyond it a seat is taken as won by its election-night leader.
+  modelled_margin: 2500
+  # Close seats the electorate model cannot simulate (it is fitted to National against Labour). Each is an
+  # editorial judgement: the chance the runner-up overtakes the leader in the official count.
+  assumed_seats:
+    - electorate: Te Tai Tokerau
+      challenger: Green
+      p_flip: 0.08
+      note: Te Pāti Māori leads the Greens by 436. In 2023 special votes moved this seat about 1,000 votes
+        towards Te Pāti Māori; the party's domestic special votes have leaned its way more than the Greens' have.
+    - electorate: Epsom
+      challenger: National
+      p_flip: 0.01
+      note: ACT's David Seymour leads National's Paul Goldsmith by 2,044.
+    - electorate: Waiariki
+      challenger: Green
+      p_flip: 0.01
+      note: Te Pāti Māori's Rawiri Waititi leads the Greens by 2,274.
+  priors:                          # log-ratio scale, each party against National
+    mean_sd: 1.5                   # a category's usual lean to a party
+    common_sd_scale: 0.15          # HalfNormal scale: sd of one election's shift of every party against National
+    party_sd_scale: 0.15           # ... of one party's own shift in an election
+    category_sd_median: 0.15       # prior median (log-normal, log sd 1) of how far a category's lean to a
+                                   # party departs from those shifts within an election
+  backtest:
+    volume_error_sd: 0.04
 
 mcmc: {chains: 4, warmup: 1000, samples: 1000, target_accept: 0.98, max_tree_depth: 10, seed: 2026}
 n_sims: 20000                       # simulated official counts per seat

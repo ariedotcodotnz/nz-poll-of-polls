@@ -21,7 +21,7 @@ pollofpolls forecast      # stacked ensemble -> seats, coalitions, output/*.csv 
 pollofpolls report        # the website, built with Quarto from website/ into site/
 pollofpolls backtest      # rolling-origin backtests on 2017/2020/2023 -> stacking weights (slow)
 pollofpolls electorates   # check the editorial electorate assumptions and preview what they imply
-pollofpolls specials      # forecast the official count of close electorates from election night (config/specials.yml)
+pollofpolls specials      # forecast the official count from election night: close seats, party vote, majority (config/specials.yml)
 ```
 
 `pollofpolls all --quick` runs fetch to report with short MCMC chains for development. A full `fit`
@@ -85,21 +85,25 @@ brute-force Gaussian integration in `tests/test_kalman.py`. It uses a Gaussian l
 so it is a different model from `gauss`, not a faster route to the same posterior. It is not in the
 ensemble because its sequential filter makes each gradient slower on CPU than full-state NUTS.
 
-## Special votes in close electorates
+## Special votes: the close electorates and the House
 
-After election night, `pollofpolls specials` forecasts the official count of the electorates still in doubt
-(Hamilton East, Hutt South, Mt Roskill and Wairarapa in 2026). The official result is the election-night count, plus
+After election night, `pollofpolls specials` forecasts the official count: the electorates still in doubt
+(Hamilton East, Hutt South, Mt Roskill and Wairarapa in 2026), each party's final party vote and seats, and the
+chance that the Government keeps its majority, ties or loses it. The official result is the election-night count, plus
 the official count's change to the ordinary votes, plus the special votes, and each part has its own hierarchical
 model in NumPyro, fitted to the Electoral Commission's results by voting place for 2017, 2020 and 2023:
 
 * **how many special votes**: each seat's specials per ordinary vote, moved by the national change the Commission
-  reports (corrected for its election-night estimates having fallen 5 to 6% short in 2020 and 2023);
+  reports;
 * **how they split**: a multinomial model of each seat's specials as a log-ratio shift from its own ordinary vote,
   overseas and domestic separately, with an election-wide shift shared by every seat (drawn fresh, with heavy tails,
   for the forecast election, as the poll model draws its industry error), a persistent seat effect and noise. An
-  editorial adjustment covers the 2025 end of enrolment while voting, which removed about 40% of domestic specials;
+  editorial adjustment covers the 2025 end of enrolment while voting, which removed about 45% of domestic specials;
 * **the official count's recheck**: fitted to archived election-night counts, a mixture of small corrections and
   occasional additions of votes missing on election night (8.3% of Hutt South's ordinary votes in 2023).
+* **the party vote and the House**: the same idea for the country's party votes at the six elections since 2008,
+  each party's special votes against its ordinary votes, tied to the seats so they move together; then seats by
+  Sainte-Laguë with overhang, the chance each side has a majority, and the routes that get there.
 
 Leave-one-election-out backtests score it against rules of thumb. Method and data: [docs/specials.md](docs/specials.md).
 

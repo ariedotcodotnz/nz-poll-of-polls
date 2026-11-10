@@ -74,7 +74,11 @@ Written by `pollofpolls specials`; see [Special votes](specials.md). Margins are
 
 | File | Contents |
 |---|---|
-| `forecast.json` | everything the Special votes page shows: per seat (`seats`) the election-night count, expected special votes, the official count's change, the final `margin` (mean, quantiles, `p_close`), `p_win`, what the trailing candidate needs (`trailing`) and every candidate's forecast; the joint distribution of seats won (`joint`); `scenarios` (each past election's shift replayed, and no enrolment adjustment); the `national` volume and enrolment-change draws; posterior summaries; sampler `diagnostics`; and the `backtest` summary |
+| `forecast.json` | everything the Special votes page shows: per seat (`seats`) the election-night count, expected special votes, the official count's change, the final `margin` (mean, quantiles, `p_close`), `p_win`, what the trailing candidate needs (`trailing`) and every candidate's forecast; the joint distribution of seats won (`joint`); `scenarios` (each past election's shift replayed, and no enrolment adjustment); the `national` volume and enrolment-change draws; posterior summaries; sampler `diagnostics`; the `backtest` summary; and `house`: the chance each side has a majority (`outcome`), the distribution of the Government's `margin` over everyone else, every party's `party_vote` and `seats`, the `routes` from the election-night House (most simulated, and the minimal routes to a one-seat majority for the other side), the other simulated and assumed seats, `scenarios` and the party-vote backtest |
+| `party_votes.csv` | one row per party: election-night votes and share, quantiles of the final share, its share of special votes, election-night and mean forecast seats, and the chance of fewer or more seats |
+| `routes.csv` | the routes in `house.routes`: what changes from election night, its probability and result |
+| `party_vote_history.csv` | one row per party and past election: ordinary, overseas and domestic special votes and shares, the final share and, where archived, the election-night share |
+| `party_vote_backtest.csv` | one row per party and past election: start, actual and forecast final share, interval coverage, the errors of the model and two rules of thumb, and seats at the start, in the result and in the model |
 | `seats.csv` | one row per seat: election-night leader and margin, special votes, margin quantiles, win probabilities and the share the trailing candidate needs |
 | `candidates.csv` | one row per candidate: party, election-night votes, mean special votes, final-vote quantiles |
 | `history.csv` | one row per past seat and election: special votes per ordinary vote, overseas share, Labour's share of the two leaders in ordinary and special votes (overall and per category), the shift, and, where the election-night count is archived, how the official count changed the ordinary votes and the margin |
@@ -106,7 +110,7 @@ Built by Quarto from `website/`; see [Development](development.md#the-website).
 | File | Contents |
 |---|---|
 | `index.html` | the forecast, from `website/index.qmd`; chart data is embedded |
-| `specials.html` | "Special votes", from `website/specials.qmd`: the official-count forecast of the close seats |
+| `specials.html` | "Special votes", from `website/specials.qmd`: the official-count forecast: who has a majority, the party vote and seats, and the close seats |
 | `model.html` | "How the model works", from `website/model.qmd` |
 | `evaluation.html` | "How it is tested", from `website/evaluation.qmd`, with the latest backtest results |
 | `site_libs/` | Quarto's scripts and styles |

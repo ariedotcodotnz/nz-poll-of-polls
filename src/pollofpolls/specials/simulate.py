@@ -52,8 +52,11 @@ def _resample(post: Posterior, n: int, rng: np.random.Generator) -> dict[str, np
 
 
 def election_shift(p: dict[str, np.ndarray], year_index: int | None, df: float | None,
-                   rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
-    """The election-wide shift (n, 2) and the category deviations (n, C, 2): a fresh election, or a past one's."""
+                   rng: np.random.Generator, national: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """The election-wide shift (n, 2) and the category deviations (n, C, 2): a fresh election, or a past one's.
+
+    ``national`` (n, 2) is the forecast election's national party-vote lean, for a model fitted with the link.
+    """
     n = len(p["sigma_year"])
     if year_index is not None:
         return p["alpha"][:, year_index], p["gamma"][:, year_index]
@@ -61,6 +64,10 @@ def election_shift(p: dict[str, np.ndarray], year_index: int | None, df: float |
     if df:
         z *= np.sqrt(df / rng.chisquare(df, size=n))[:, None]       # multivariate Student-t
     alpha = np.einsum("nij,nj->ni", p["L_year"], z) * p["sigma_year"]
+    if "link_slope" in p:
+        if national is None:
+            raise ValueError("the model was fitted with the national link: simulate needs `national`")
+        alpha = alpha + p["link_slope"] * national
     gamma = rng.standard_normal((n, len(CATS), 2)) * p["sigma_yc"][:, None, :]
     return alpha, gamma
 
@@ -81,17 +88,19 @@ def official_change(start: np.ndarray, p: dict[str, np.ndarray], rng: np.random.
 
 def simulate(post: Posterior, data: SpecialsData, targets: list[Target], volume: VolumeShift, *,
              official: Posterior | None = None, year: int | None = None, kappa: np.ndarray | None = None,
-             df: float | None = 4, max_addition: float = 0.2, n: int = 20000, seed: int = 0) -> Simulation:
+             national: np.ndarray | None = None, df: float | None = 4, max_addition: float = 0.2,
+             n: int = 20000, seed: int = 0) -> Simulation:
     """Simulate the official count of ``targets``.
 
     ``year`` replays a past election's special-vote shift instead of drawing a new one. ``kappa`` (n, 2) shifts
-    the domestic specials (the 2026 enrolment change). ``official`` is the official-count posterior; without it,
+    the domestic specials (the 2026 enrolment change). ``national`` (n, 2) is the election's national party-vote
+    lean, when the model was fitted with that link. ``official`` is the official-count posterior; without it,
     or for a target with ``official_change`` False, the ordinary votes are not changed.
     """
     rng = np.random.default_rng(seed)
     p = _resample(post, n, rng)
     po = _resample(official, n, rng) if official is not None else None
-    alpha, gamma = election_shift(p, None if year is None else data.year_index(year), df, rng)
+    alpha, gamma = election_shift(p, None if year is None else data.year_index(year), df, rng, national)
     ref = data.year_index(volume.ref_year)
     dom = CATS.index("domestic")
     N, C = len(targets), len(CATS)
