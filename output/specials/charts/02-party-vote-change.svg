@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='760.00pt' height='520.00pt' viewBox='0 0 760.00 520.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHw3NjAuMDB8MC4wMHw1MjAuMDA='>
+    <rect x='0.00' y='0.00' width='760.00' height='520.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw3NjAuMDB8MC4wMHw1MjAuMDA=)'>
+<rect x='0.00' y='0.00000000000011' width='760.00' height='520.00' style='stroke-width: 1.07; stroke: #FFFFFF; fill: #FFFFFF;' />
+</g>
+<defs>
+  <clipPath id='cpMTEyLjEyfDc0MC4wN3w5OS45MHw0NTMuMTA='>
+    <rect x='112.12' y='99.90' width='627.96' height='353.20' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMTEyLjEyfDc0MC4wN3w5OS45MHw0NTMuMTA=)'>
+<polyline points='259.56,453.10 259.56,99.90 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<polyline points='418.08,453.10 418.08,99.90 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<polyline points='576.60,453.10 576.60,99.90 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<polyline points='735.12,453.10 735.12,99.90 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<line x1='418.08' y1='453.10' x2='418.08' y2='99.90' style='stroke-width: 2.13; stroke: #333333; stroke-linecap: butt;' />
+<line x1='188.23' y1='423.66' x2='404.99' y2='423.66' style='stroke-width: 4.69; stroke: #1F5FBF; stroke-opacity: 0.35;' />
+<line x1='312.63' y1='227.44' x2='551.21' y2='227.44' style='stroke-width: 4.69; stroke: #D8342A; stroke-opacity: 0.35;' />
+<line x1='439.25' y1='129.33' x2='663.96' y2='129.33' style='stroke-width: 4.69; stroke: #44CA89; stroke-opacity: 0.35;' />
+<line x1='331.88' y1='325.55' x2='457.11' y2='325.55' style='stroke-width: 4.69; stroke: #D9A300; stroke-opacity: 0.35;' />
+<line x1='319.08' y1='374.61' x2='399.07' y2='374.61' style='stroke-width: 4.69; stroke: #1F2328; stroke-opacity: 0.35;' />
+<line x1='430.29' y1='178.39' x2='554.59' y2='178.39' style='stroke-width: 4.69; stroke: #079EC4; stroke-opacity: 0.35;' />
+<line x1='418.65' y1='276.50' x2='432.64' y2='276.50' style='stroke-width: 4.69; stroke: #8E2F6B; stroke-opacity: 0.35;' />
+<line x1='253.45' y1='423.66' x2='330.45' y2='423.66' style='stroke-width: 11.74; stroke: #1F5FBF;' />
+<line x1='379.74' y1='227.44' x2='473.85' y2='227.44' style='stroke-width: 11.74; stroke: #D8342A;' />
+<line x1='499.16' y1='129.33' x2='586.59' y2='129.33' style='stroke-width: 11.74; stroke: #44CA89;' />
+<line x1='363.05' y1='325.55' x2='410.62' y2='325.55' style='stroke-width: 11.74; stroke: #D9A300;' />
+<line x1='340.36' y1='374.61' x2='371.52' y2='374.61' style='stroke-width: 11.74; stroke: #1F2328;' />
+<line x1='460.70' y1='178.39' x2='507.62' y2='178.39' style='stroke-width: 11.74; stroke: #079EC4;' />
+<line x1='421.89' y1='276.50' x2='427.05' y2='276.50' style='stroke-width: 11.74; stroke: #8E2F6B;' />
+<circle cx='291.04' cy='423.66' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='425.73' cy='227.44' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='541.31' cy='129.33' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='385.75' cy='325.55' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='355.40' cy='374.61' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='482.98' cy='178.39' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<circle cx='424.26' cy='276.50' r='5.40' style='stroke-width: 1.84; stroke: #222222; fill: #FFFFFF;' />
+<text x='175.92' y='428.84' text-anchor='end' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='41.05px' lengthAdjust='spacingAndGlyphs'>−0.80</text>
+<text x='563.46' y='232.62' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='40.84px' lengthAdjust='spacingAndGlyphs'>+0.05</text>
+<text x='675.89' y='134.50' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='39.77px' lengthAdjust='spacingAndGlyphs'>+0.78</text>
+<text x='319.56' y='330.73' text-anchor='end' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='41.09px' lengthAdjust='spacingAndGlyphs'>−0.20</text>
+<text x='306.56' y='379.78' text-anchor='end' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='41.72px' lengthAdjust='spacingAndGlyphs'>−0.40</text>
+<text x='566.27' y='183.56' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='38.94px' lengthAdjust='spacingAndGlyphs'>+0.41</text>
+<text x='445.03' y='281.67' style='font-size: 14.23px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='41.31px' lengthAdjust='spacingAndGlyphs'>+0.04</text>
+</g>
+<g clip-path='url(#cpMC4wMHw3NjAuMDB8MC4wMHw1MjAuMDA=)'>
+<text x='109.92' y='429.12' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='60.14px' lengthAdjust='spacingAndGlyphs'>National</text>
+<text x='109.92' y='380.07' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='57.20px' lengthAdjust='spacingAndGlyphs'>NZ First</text>
+<text x='109.92' y='331.01' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='31.39px' lengthAdjust='spacingAndGlyphs'>ACT</text>
+<text x='109.92' y='281.96' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='93.98px' lengthAdjust='spacingAndGlyphs'>Te Pāti Māori</text>
+<text x='109.92' y='232.90' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='50.77px' lengthAdjust='spacingAndGlyphs'>Labour</text>
+<text x='109.92' y='183.84' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='88.11px' lengthAdjust='spacingAndGlyphs'>Opportunity</text>
+<text x='109.92' y='134.79' text-anchor='end' style='font-size: 15.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='43.86px' lengthAdjust='spacingAndGlyphs'>Green</text>
+<text x='259.56' y='468.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='15.73px' lengthAdjust='spacingAndGlyphs'>−1</text>
+<text x='418.08' y='468.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='8.75px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text x='576.60' y='468.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='15.73px' lengthAdjust='spacingAndGlyphs'>+1</text>
+<text x='735.12' y='468.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='17.22px' lengthAdjust='spacingAndGlyphs'>+2</text>
+<text x='15.94' y='58.82' style='font-size: 17.00px;fill: #222222; font-family: "Inter";' textLength='600.61px' lengthAdjust='spacingAndGlyphs'>Forecast change in each party's share of the party vote from election night</text>
+<text x='15.94' y='82.28' style='font-size: 17.00px;fill: #222222; font-family: "Inter";' textLength='659.67px' lengthAdjust='spacingAndGlyphs'>to the official count, in percentage points. Thick bar: 50% of simulations; thin: 90%</text>
+<text x='15.94' y='34.85' style='font-size: 26.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='501.58px' lengthAdjust='spacingAndGlyphs'>Special votes should cost National most</text>
+<text x='15.94' y='505.56' style='font-size: 11.50px;fill: #6E6E6E; font-family: "Inter";' textLength='639.66px' lengthAdjust='spacingAndGlyphs'>Source: NZ Poll of Polls special-vote model, 20,000 simulated official counts; Electoral Commission preliminary results</text>
+</g>
+</g>
+</svg>

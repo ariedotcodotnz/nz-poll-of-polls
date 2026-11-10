@@ -9,6 +9,7 @@ Writes output/specials/:
     backtest.csv      leave-one-election-out forecasts of past seats, per method
     backtest_summary.csv
     margins.npz       simulated final margins and special-vote shares, for the charts
+    margin_draws.csv  5,000 of those margins per seat, for charts drawn outside Python
     party_votes.csv   the country's party vote: election night and the forecast official count, with seats
     routes.csv        how simulated counts changed the election-night House, and the minimal routes to a
                       change of majority
@@ -579,6 +580,10 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
     np.savez_compressed(out / "margins.npz", names=np.array([s["name"] for s in seats]),
                         margin=(sim.final[:, :first, 1] - sim.final[:, :first, 0]).astype(np.int32),
                         special_share=_share(sim.specials[:, :first].sum(2)).astype(np.float32))
+    # the same margins as a table, thinned, for charts drawn outside Python (r/specials_charts.R)
+    thin = np.linspace(0, n - 1, min(n, 5000)).astype(int)
+    _write_csv(out / "margin_draws.csv", [{"electorate": s["name"], "margin": int(sim.final[i, j, 1] - sim.final[i, j, 0])}
+                                          for j, s in enumerate(seats) for i in thin])
     for s in seats:
         _log(f"specials: {s['name']}: election night {s['preliminary']['margin']:+d} ({pair[1]} - {pair[0]}), "
              f"P({pair[1]}) {s['p_win'][pair[1]]:.2f}, final margin {s['margin']['q50']:+.0f} "

@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='760.00pt' height='540.00pt' viewBox='0 0 760.00 540.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHw3NjAuMDB8MC4wMHw1NDAuMDA='>
+    <rect x='0.00' y='0.00' width='760.00' height='540.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw3NjAuMDB8MC4wMHw1NDAuMDA=)'>
+<rect x='0.00' y='0.00' width='760.00' height='540.00' style='stroke-width: 1.07; stroke: #FFFFFF; fill: #FFFFFF;' />
+</g>
+<defs>
+  <clipPath id='cpMzUuODh8NzQwLjA3fDk5LjkwfDQ3My4xMA=='>
+    <rect x='35.88' y='99.90' width='704.19' height='373.20' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMzUuODh8NzQwLjA3fDk5LjkwfDQ3My4xMA==)'>
+<polyline points='35.88,384.16 740.07,384.16 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<polyline points='35.88,258.71 740.07,258.71 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<polyline points='35.88,133.27 740.07,133.27 ' style='stroke-width: 1.07; stroke: #CBCBCB; stroke-linecap: butt;' />
+<line x1='35.88' y1='258.71' x2='740.07' y2='258.71' style='stroke-width: 2.13; stroke: #333333; stroke-linecap: butt;' />
+<polyline points='54.83,324.06 149.56,349.75 244.30,402.73 339.03,456.13 433.77,412.47 528.50,329.27 ' style='stroke-width: 2.77; stroke: #1F5FBF; stroke-linecap: butt;' />
+<polyline points='54.83,296.41 149.56,314.09 244.30,307.06 339.03,315.54 433.77,271.72 528.50,308.30 ' style='stroke-width: 2.77; stroke: #1F2328; stroke-linecap: butt;' />
+<polyline points='54.83,274.12 149.56,259.89 244.30,257.90 339.03,258.30 433.77,313.14 528.50,296.67 ' style='stroke-width: 2.77; stroke: #D9A300; stroke-linecap: butt;' />
+<polyline points='54.83,242.77 149.56,252.06 244.30,253.09 339.03,247.75 433.77,239.75 528.50,218.60 ' style='stroke-width: 2.77; stroke: #8E2F6B; stroke-linecap: butt;' />
+<polyline points='339.03,223.24 433.77,245.63 528.50,238.24 ' style='stroke-width: 2.77; stroke: #079EC4; stroke-linecap: butt;' />
+<polyline points='54.83,241.02 149.56,215.67 244.30,220.85 339.03,124.62 433.77,151.11 528.50,283.71 ' style='stroke-width: 2.77; stroke: #D8342A; stroke-linecap: butt;' />
+<polyline points='54.83,185.57 149.56,152.18 244.30,116.86 339.03,192.48 433.77,212.70 528.50,149.53 ' style='stroke-width: 2.77; stroke: #44CA89; stroke-linecap: butt;' />
+<circle cx='54.83' cy='324.06' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='54.83' cy='241.02' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='54.83' cy='185.57' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='54.83' cy='274.12' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='54.83' cy='296.41' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='54.83' cy='242.77' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<circle cx='149.56' cy='349.75' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='149.56' cy='215.67' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='149.56' cy='152.18' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='149.56' cy='259.89' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='149.56' cy='314.09' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='149.56' cy='252.06' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<circle cx='244.30' cy='402.73' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='244.30' cy='220.85' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='244.30' cy='116.86' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='244.30' cy='257.90' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='244.30' cy='307.06' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='244.30' cy='253.09' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<circle cx='339.03' cy='456.13' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='339.03' cy='124.62' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='339.03' cy='192.48' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='339.03' cy='258.30' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='339.03' cy='315.54' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='339.03' cy='223.24' r='3.34' style='stroke-width: 0.71; stroke: #079EC4; fill: #079EC4;' />
+<circle cx='339.03' cy='247.75' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<circle cx='433.77' cy='412.47' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='433.77' cy='151.11' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='433.77' cy='212.70' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='433.77' cy='313.14' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='433.77' cy='271.72' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='433.77' cy='245.63' r='3.34' style='stroke-width: 0.71; stroke: #079EC4; fill: #079EC4;' />
+<circle cx='433.77' cy='239.75' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<circle cx='528.50' cy='329.27' r='3.34' style='stroke-width: 0.71; stroke: #1F5FBF; fill: #1F5FBF;' />
+<circle cx='528.50' cy='283.71' r='3.34' style='stroke-width: 0.71; stroke: #D8342A; fill: #D8342A;' />
+<circle cx='528.50' cy='149.53' r='3.34' style='stroke-width: 0.71; stroke: #44CA89; fill: #44CA89;' />
+<circle cx='528.50' cy='296.67' r='3.34' style='stroke-width: 0.71; stroke: #D9A300; fill: #D9A300;' />
+<circle cx='528.50' cy='308.30' r='3.34' style='stroke-width: 0.71; stroke: #1F2328; fill: #1F2328;' />
+<circle cx='528.50' cy='238.24' r='3.34' style='stroke-width: 0.71; stroke: #079EC4; fill: #079EC4;' />
+<circle cx='528.50' cy='218.60' r='3.34' style='stroke-width: 0.71; stroke: #8E2F6B; fill: #8E2F6B;' />
+<text x='544.29' y='335.73' style='font-size: 13.66px; font-weight: 600;fill: #1F5FBF; font-family: "Inter";' textLength='54.73px' lengthAdjust='spacingAndGlyphs'>National</text>
+<text x='544.29' y='314.76' style='font-size: 13.66px; font-weight: 600;fill: #1F2328; font-family: "Inter";' textLength='52.08px' lengthAdjust='spacingAndGlyphs'>NZ First</text>
+<text x='544.29' y='299.21' style='font-size: 13.66px; font-weight: 600;fill: #D9A300; font-family: "Inter";' textLength='28.59px' lengthAdjust='spacingAndGlyphs'>ACT</text>
+<text x='544.29' y='283.65' style='font-size: 13.66px; font-weight: 600;fill: #D8342A; font-family: "Inter";' textLength='46.22px' lengthAdjust='spacingAndGlyphs'>Labour</text>
+<text x='544.29' y='244.70' style='font-size: 13.66px; font-weight: 600;fill: #079EC4; font-family: "Inter";' textLength='80.20px' lengthAdjust='spacingAndGlyphs'>Opportunity</text>
+<text x='544.29' y='225.06' style='font-size: 13.66px; font-weight: 600;fill: #8E2F6B; font-family: "Inter";' textLength='85.55px' lengthAdjust='spacingAndGlyphs'>Te Pāti Māori</text>
+<text x='544.29' y='155.99' style='font-size: 13.66px; font-weight: 600;fill: #44CA89; font-family: "Inter";' textLength='39.94px' lengthAdjust='spacingAndGlyphs'>Green</text>
+</g>
+<g clip-path='url(#cpMC4wMHw3NjAuMDB8MC4wMHw1NDAuMDA=)'>
+<text x='33.69' y='389.26' text-anchor='end' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='17.75px' lengthAdjust='spacingAndGlyphs'>−5</text>
+<text x='33.69' y='263.81' text-anchor='end' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='8.75px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text x='33.69' y='138.36' text-anchor='end' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='17.75px' lengthAdjust='spacingAndGlyphs'>+5</text>
+<text x='54.83' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='34.59px' lengthAdjust='spacingAndGlyphs'>2008</text>
+<text x='149.56' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='30.22px' lengthAdjust='spacingAndGlyphs'>2011</text>
+<text x='244.30' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='32.70px' lengthAdjust='spacingAndGlyphs'>2014</text>
+<text x='339.03' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='31.72px' lengthAdjust='spacingAndGlyphs'>2017</text>
+<text x='433.77' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='34.44px' lengthAdjust='spacingAndGlyphs'>2020</text>
+<text x='528.50' y='488.27' text-anchor='middle' style='font-size: 14.00px;fill: #222222; font-family: "Inter";' textLength='34.59px' lengthAdjust='spacingAndGlyphs'>2023</text>
+<text x='15.94' y='58.82' style='font-size: 17.00px;fill: #222222; font-family: "Inter";' textLength='550.78px' lengthAdjust='spacingAndGlyphs'>Each party's share of special votes minus its share of ordinary votes,</text>
+<text x='15.94' y='82.28' style='font-size: 17.00px;fill: #222222; font-family: "Inter";' textLength='382.72px' lengthAdjust='spacingAndGlyphs'>percentage points, official counts 2008 to 2023</text>
+<text x='15.94' y='34.85' style='font-size: 26.00px; font-weight: 600;fill: #222222; font-family: "Inter";' textLength='642.77px' lengthAdjust='spacingAndGlyphs'>Special voters have always been cooler on National</text>
+<text x='15.94' y='525.56' style='font-size: 11.50px;fill: #6E6E6E; font-family: "Inter";' textLength='485.98px' lengthAdjust='spacingAndGlyphs'>Source: Electoral Commission official results by voting place, summed over all electorates</text>
+</g>
+</g>
+</svg>

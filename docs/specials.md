@@ -131,6 +131,14 @@ election-night counts to `preliminary-counts.csv`, rebuild `party-votes.csv` wit
 `election` (and the volume reference) on: the finished
 election becomes history for the next one.
 
+## Static charts
+
+`Rscript r/specials_charts.R` draws eight charts in the BBC's house style (ggplot2 with `bbplot::bbc_style()`) from
+`output/specials/`, as SVG and PNG in `output/specials/charts/`. It needs R with ggplot2, jsonlite, svglite, ragg
+and bbplot (`remotes::install_github("bbc/bbplot")`). Run it after `pollofpolls specials`; every figure and
+headline number is read from `forecast.json` and the CSVs, but the headlines' wording is fixed in the script, so
+reread them when the forecast changes.
+
 ## Outputs
 
 See [outputs](outputs.md#outputspecials-special-votes).
