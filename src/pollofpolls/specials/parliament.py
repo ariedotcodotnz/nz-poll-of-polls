@@ -16,7 +16,10 @@ plus any change in the other side's overhang. Those are the only changes that mo
                        + (electorates an overhang party loses) - (growth of the other side's overhang)
 
 because a party in overhang keeps its electorates whatever its party vote (losing entitlement only hands the
-seat to someone else), and loses an electorate without anyone gaining a seat.
+seat to someone else), and loses an electorate without anyone gaining a seat. That holds while the parties in
+overhang on election night stay in it and no other party enters it. A simulation where that fails gets one more
+component, "other", holding whatever the listed ones leave unexplained, so a route's components always add up to
+its change of margin and the minimal routes count only simulations with nothing left over.
 """
 
 from __future__ import annotations
@@ -76,7 +79,7 @@ def margin(house: House, government: list[str]) -> np.ndarray:
 class Component:
     key: str                        # "list:ACT", "entitlement:National", "electorates:National", "overhang:..."
     party: str
-    kind: str                       # list | entitlement | electorates | overhang
+    kind: str                       # list | entitlement | electorates | overhang | other
     weight: int                     # seats of margin per unit
     lost: np.ndarray                # (n,) units lost by the government side (negative: gained)
 
@@ -96,6 +99,10 @@ def components(house: House, base: House, government: list[str]) -> list[Compone
                 out.append(Component(f"list:{p}", p, "list", 2, base.seats[0, k] - house.seats[:, k]))
         elif in_overhang:
             out.append(Component(f"overhang:{p}", p, "overhang", 1, house.overhang[:, k] - base.overhang[0, k]))
+    explained = sum(c.weight * c.lost for c in out) if out else 0
+    left = (margin(base, government)[0] - margin(house, government)) - explained
+    if np.any(left):
+        out.append(Component("other", "", "other", 1, left))
     return out
 
 
@@ -108,6 +115,8 @@ def describe(c: Component, units: int) -> str:
         return f"{c.party}'s party-vote entitlement {'falls' if units > 0 else 'rises'} by {n}"
     if c.kind == "electorates":
         return f"{c.party} {'loses' if units > 0 else 'gains'} {n} electorate{s} net"
+    if c.kind == "other":
+        return f"other changes of overhang worth {n} seat{s} {'against' if units > 0 else 'for'} the government"
     return f"{c.party}'s overhang {'grows' if units > 0 else 'shrinks'} by {n}"
 
 
@@ -133,10 +142,12 @@ def paths(house: House, base: House, government: list[str], opposition: list[str
 
     # the minimal routes: combinations of losses whose weights add up exactly to the margin plus one
     need = m0 + 1
-    weights = [c.weight for c in comps if c.kind != "overhang"]
-    idx = [j for j, c in enumerate(comps) if c.kind != "overhang"]
+    weights = [c.weight for c in comps if c.kind not in ("overhang", "other")]
+    idx = [j for j, c in enumerate(comps) if c.kind not in ("overhang", "other")]
     minimal = []
-    if need > 0 and idx:
+    # a margin of -1 is a majority for the opposition only if the two sides hold every seat
+    two_sided = bool(((result == 2) == (m < 0)).all())
+    if need > 0 and idx and two_sided:
         for combo in itertools.product(*[range(need // w + 1) for w in weights]):
             if sum(u * w for u, w in zip(combo, weights)) != need:
                 continue
@@ -147,7 +158,7 @@ def paths(house: House, base: House, government: list[str], opposition: list[str
                             "units": {comps[j].key: int(u) for j, u in zip(idx, combo) if u},
                             "p": float(hit.mean())})
         minimal.sort(key=lambda r: -r["p"])
-    return {"margin_election_night": m0, "seats_of_margin_needed": need,
+    return {"margin_election_night": m0, "seats_of_margin_needed": need, "two_sided": two_sided,
             "components": [{"key": c.key, "party": c.party, "kind": c.kind, "weight": c.weight} for c in comps],
             "top": [row(int(i)) for i in order[:top]], "n_routes": len(counts),
             "minimal": minimal, "p_minimal": float(sum(r["p"] for r in minimal)),
@@ -175,7 +186,13 @@ def summarise(house: House, base: House, government: list[str], opposition: list
                       "electorates": distribution(house.electorates[:, k]),
                       "entitlement": distribution(house.entitlement[:, k])})
     m = margin(house, government)
+    sides = [house.parties.index(p) for p in {*government, *opposition}]
+    by_margin = {str(int(v)): {name: float(((m == v) & (result == i)).mean()) for i, name in enumerate(OUTCOMES)}
+                 for v in np.unique(m)}
     return {"outcome": {name: float((result == i).mean()) for i, name in enumerate(OUTCOMES)},
             "margin": distribution(m), "margin_election_night": int(margin(base, government)[0]),
+            "margin_outcome": by_margin,
+            # with every seat on one side or the other, "neither" can only be an exact tie
+            "two_sided": bool((house.seats[:, sides].sum(1) == house.size).all()),
             "size": distribution(house.size), "size_election_night": int(base.size[0]),
             "seats": seats}

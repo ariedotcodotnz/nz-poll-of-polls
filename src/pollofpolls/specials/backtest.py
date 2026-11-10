@@ -188,13 +188,33 @@ PARTY_METHODS = {"model": "This model", "election_night": "Specials split like e
                  "average": "Average lean of past elections"}
 
 
+def split_small_winners(votes: np.ndarray, parties: list[str], small: list[dict], which: str,
+                        reference: np.ndarray) -> tuple[np.ndarray, list[str]]:
+    """Votes (..., K) with each small electorate-winning party taken out of "Other" into its own column.
+
+    Each gets the share of "Other" it had in ``reference`` (K,), a count where its own votes ``small[which]`` are
+    known; for that count itself the split is exact.
+    """
+    o = parties.index("Other")
+    v = np.asarray(votes, float)
+    if not small:
+        return v, list(parties)
+    cols = [v[..., o] * (m[which] / reference[o]) for m in small]
+    rest = v.copy()
+    rest[..., o] = v[..., o] - sum(cols)
+    return np.concatenate([rest, np.stack(cols, axis=-1)], axis=-1), [*parties, *(m["party"] for m in small)]
+
+
 def backtest_party_vote(h: NationalHistory, second: str, priors: dict, mcmc: dict, *,
-                        electorates: dict[int, np.ndarray] | None = None, n: int = 8000, df: float | None = 4,
+                        electorates: dict[int, np.ndarray] | None = None,
+                        small: dict[int, list[dict]] | None = None, n: int = 8000, df: float | None = 4,
                         volume_error_sd: float = 0.04, overseas_error_sd: float = 0.10, nseats: int = 120,
                         threshold: float = 0.05, seed: int = 0, log=print) -> list[dict]:
     """Leave one election out: forecast its official party vote from its election-night count (or, where that
     is not archived, from its official ordinary votes), with the model refitted on the other elections. One row
-    per party and election, with two rules of thumb and, where the electorates won are on file, the seats."""
+    per party and election, with two rules of thumb and, where the electorates won are on file, the seats.
+    ``small`` (`national.small_winners`) names the parties pooled as "Other" that won an electorate: they are
+    allocated seats in their own right, as they were."""
     rows: list[dict] = []
     for t, year in enumerate(h.years):
         train = [y for y in h.years if y != year]
@@ -223,10 +243,16 @@ def backtest_party_vote(h: NationalHistory, second: str, priors: dict, mcmc: dic
         average = 100 * rule.final[0] / rule.final[0].sum()
         seats = None
         if electorates is not None and year in electorates:
-            e = electorates[year]
-            seats = (parl.elect(sim.final, np.broadcast_to(e, sim.final.shape), h.parties, nseats, threshold).seats,
-                     parl.elect(start, e, h.parties, nseats, threshold).seats[0],
-                     parl.elect(h.final[t], e, h.parties, nseats, threshold).seats[0])
+            mine = (small or {}).get(year, [])
+            e = np.concatenate([electorates[year], [m["electorates"] for m in mine]])
+            e[h.parties.index("Other")] -= sum(m["electorates"] for m in mine)
+            v_sim, names = split_small_winners(sim.final, h.parties, mine, "start", start)
+            v_start, _ = split_small_winners(start, h.parties, mine, "start", start)
+            v_final, _ = split_small_winners(h.final[t], h.parties, mine, "final", h.final[t])
+            K = len(h.parties)
+            seats = (parl.elect(v_sim, np.broadcast_to(e, v_sim.shape), names, nseats, threshold).seats[:, :K],
+                     parl.elect(v_start, e, names, nseats, threshold).seats[0, :K],
+                     parl.elect(v_final, e, names, nseats, threshold).seats[0, :K])
         log(f"party-vote backtest {year}: fitted on {train} (divergences {post.diagnostics['n_divergent']})")
         for k, party in enumerate(h.parties):
             if start[k] < pv.MIN_VOTES:

@@ -282,6 +282,98 @@ def test_election_night_house_and_margin_arithmetic():
     assert abs(odds["opposition"] - r["p_margin_exactly_needed"] - r["p_margin_more_than_needed"]) < 1e-12
 
 
+def test_routes_stay_exact_when_a_party_leaves_overhang():
+    """Enough party votes take National out of overhang: the nine-seat change of margin is still accounted for."""
+    from pollofpolls.specials import parliament as parl
+    base = parl.elect(NIGHT_VOTES, NIGHT_SEATS, PARTIES)
+    votes = NIGHT_VOTES.astype(float).copy()
+    votes[0] = 1_100_000
+    house = parl.elect(votes, NIGHT_SEATS, PARTIES)
+    assert house.overhang[0, 0] == 0 and parl.margin(house, GOV)[0] - 3 == 9
+    comps = parl.components(house, base, GOV)
+    assert np.array_equal(sum(c.weight * c.lost for c in comps), 3 - parl.margin(house, GOV))
+    assert any(c.kind == "other" and c.lost[0] for c in comps)
+    r = parl.paths(house, base, GOV, OPP)
+    assert any("other changes" in step for step in r["top"][0]["steps"]) and r["p_minimal"] == 0
+
+
+def test_unaligned_party_makes_a_hung_house_not_a_tie(tmp_path):
+    """With Opportunity on neither side a negative margin is no majority, and the page and chart say so."""
+    import json
+
+    from pollofpolls.report.specials import SpecialsPage
+    from pollofpolls.specials import parliament as parl
+    opp = [p for p in OPP if p != "Opportunity"]
+    base = parl.elect(NIGHT_VOTES, NIGHT_SEATS, PARTIES)
+    seats = np.tile(NIGHT_SEATS, (3, 1))
+    seats[1:, 0] -= [2, 4]                                 # National loses electorates to Labour
+    seats[1:, 1] += [2, 4]
+    house = parl.elect(np.tile(NIGHT_VOTES, (3, 1)), seats, PARTIES)
+    assert parl.margin(house, GOV).tolist() == [3, 1, -1] and parl.outcome(house, GOV, opp).tolist() == [0, 0, 1]
+    s = parl.summarise(house, base, GOV, opp)
+    assert not s["two_sided"] and s["outcome"]["opposition"] == 0
+    assert abs(s["margin_outcome"]["-1"]["neither"] - 1 / 3) < 1e-9
+    assert parl.paths(house, base, GOV, opp)["minimal"] == []
+    assert parl.summarise(house, base, GOV, OPP)["two_sided"]
+    shutil.copytree(ROOT / "config", tmp_path / "config")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
+    out = tmp_path / "output" / "specials"
+    out.mkdir(parents=True)
+    hs = {**s, "routes": parl.paths(house, base, GOV, opp), "government": {"label": "G", "parties": GOV},
+          "opposition": {"label": "O", "parties": opp}}
+    (out / "forecast.json").write_text(json.dumps({"pair": PAIR, "house": hs}))
+    page = SpecialsPage(tmp_path)
+    assert page.outcome_label("neither", short=True) == "No majority" and page.routes_text() == ""
+    bars = {t.name: list(t.x) for t in page.house_figure().data}
+    assert bars == {"G majority": [1, 3], "No majority": [-1]}
+
+
+@needs_data
+def test_past_house_keeps_small_electorate_winners():
+    """2011: Mana and United Future each won an electorate, so they are allocated seats in their own right."""
+    from pollofpolls.specials import national as natdata
+    from pollofpolls.specials import parliament as parl
+    from pollofpolls.specials.backtest import split_small_winners
+    names = natdata.PartyNames(CFG["parliament"]["parties"])
+    data_dir, seats_csv = ROOT / CFG["parliament"]["data_dir"], ROOT / "data/reference/electorate_seats.csv"
+    h = natdata.load_history(data_dir, names, before=CFG["election"])
+    small = natdata.small_winners(data_dir, seats_csv, names)
+    assert {m["party"] for m in small[2011]} == {"Mana", "United Future"} and set(small) == {2011, 2014}
+    t = h.year_index(2011)
+    e = np.concatenate([natdata.read_electorate_seats(seats_csv, names)[2011], [m["electorates"] for m in small[2011]]])
+    e[h.parties.index("Other")] = 0
+    votes, parties = split_small_winners(h.final[t], h.parties, small[2011], "final", h.final[t])
+    assert votes.sum() == h.final[t].sum()
+    same, unchanged = split_small_winners(h.final[t], h.parties, [], "final", h.final[t])     # a year with none
+    assert np.array_equal(same, h.final[t]) and unchanged == h.parties
+    house = parl.elect(votes, e, parties)
+    seats = dict(zip(parties, house.seats[0].tolist()))
+    assert (seats["National"], seats["Labour"], seats["Mana"], seats["United Future"]) == (59, 34, 1, 1)
+    assert house.size[0] == 121
+
+
+def test_stage_fingerprint_covers_what_the_house_reads(tmp_path, monkeypatch):
+    from pollofpolls.config import Config
+    from pollofpolls.specials import run
+    shutil.copytree(ROOT / "config", tmp_path / "config")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
+    seen = {}
+
+    class Cache:
+        def __init__(self, *_):
+            pass
+
+        def run(self, name, inputs, outputs, fn, force=False):
+            seen["inputs"] = [str(i) for i in inputs]
+            return False
+
+    monkeypatch.setattr(run, "StageCache", Cache)
+    run.run_specials(Config(tmp_path))
+    assert any(i.endswith("electorate_seats.csv") for i in seen["inputs"])
+    assert any(i.endswith("forecast/seats.py") for i in seen["inputs"])
+    assert any(i.endswith(CFG["parliament"]["data_dir"]) for i in seen["inputs"])
+
+
 def test_party_vote_simulation_follows_the_lean():
     from pollofpolls.specials import partyvote as pv
     rng = np.random.default_rng(0)

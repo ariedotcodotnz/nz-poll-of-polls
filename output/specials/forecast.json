@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-10T06:57:52+00:00",
+ "generated_at": "2026-11-10T07:32:35+00:00",
  "election": 2026,
  "official_results_due": "2026-11-27",
  "pair": [
@@ -1002,13 +1002,13 @@
    "max_rhat": 1.0030076503753662,
    "min_ess_bulk": 1176.1107266628674,
    "n_divergent": 0,
-   "seconds": 16.7
+   "seconds": 15.0
   },
   "official_count": {
    "max_rhat": 1.0009427070617676,
    "min_ess_bulk": 2187.690922117959,
    "n_divergent": 0,
-   "seconds": 6.6
+   "seconds": 6.2
   }
  },
  "data": {
@@ -1066,6 +1066,114 @@
    "9": 0.00015
   },
   "margin_election_night": 3,
+  "margin_outcome": {
+   "-11": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 5e-05
+   },
+   "-10": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 5e-05
+   },
+   "-9": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.0001
+   },
+   "-8": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.0006
+   },
+   "-7": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.00185
+   },
+   "-6": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.00525
+   },
+   "-5": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.01
+   },
+   "-4": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.0261
+   },
+   "-3": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.05365
+   },
+   "-2": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.13065
+   },
+   "-1": {
+    "government": 0.0,
+    "neither": 0.0,
+    "opposition": 0.1458
+   },
+   "0": {
+    "government": 0.0,
+    "neither": 0.1802,
+    "opposition": 0.0
+   },
+   "1": {
+    "government": 0.1768,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "2": {
+    "government": 0.15375,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "3": {
+    "government": 0.07065,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "4": {
+    "government": 0.03055,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "5": {
+    "government": 0.01,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "6": {
+    "government": 0.00245,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "7": {
+    "government": 0.0009,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "8": {
+    "government": 0.00045,
+    "neither": 0.0,
+    "opposition": 0.0
+   },
+   "9": {
+    "government": 0.00015,
+    "neither": 0.0,
+    "opposition": 0.0
+   }
+  },
+  "two_sided": true,
   "size": {
    "124": 0.00015,
    "125": 0.001,
@@ -1344,6 +1452,7 @@
   "routes": {
    "margin_election_night": 3,
    "seats_of_margin_needed": 4,
+   "two_sided": true,
    "components": [
     {
      "key": "entitlement:National",
@@ -2309,7 +2418,7 @@
    "max_rhat": 1.0023103952407837,
    "min_ess_bulk": 600.0984266044712,
    "n_divergent": 1,
-   "seconds": 6.1
+   "seconds": 5.2
   },
   "backtest": {
    "n_cases": 45,
@@ -2335,12 +2444,12 @@
    "coverage_90": 0.9777777777777777,
    "crps_pp": 0.0922953432278621,
    "seats": {
-    "n_cases": 30,
+    "n_cases": 28,
     "n_changed": 12,
-    "model_right": 0.9,
-    "election_night_right": 0.6,
-    "mean_p_actual": 0.7329125,
-    "mean_p_actual_when_changed": 0.5280520833333333
+    "model_right": 0.8928571428571429,
+    "election_night_right": 0.5714285714285714,
+    "mean_p_actual": 0.7121651785714285,
+    "mean_p_actual_when_changed": 0.5101249999999999
    }
   }
  },

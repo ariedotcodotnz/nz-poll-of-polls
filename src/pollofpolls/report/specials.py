@@ -376,7 +376,9 @@ class SpecialsPage:
     def outcome_label(self, key: str, short: bool = False) -> str:
         h = self.house
         if key == "neither":
-            return "Exact tie" if short else "Neither side has a majority (an exact tie)"
+            if h.get("two_sided", True):       # the two sides hold every seat, so "neither" can only be a tie
+                return "Exact tie" if short else "Neither side has a majority (an exact tie)"
+            return "No majority" if short else "Neither side has a majority"
         label = esc(h[key]["label"])
         return label if short else f"{label} have a majority"
 
@@ -412,7 +414,8 @@ class SpecialsPage:
         if not h:
             return ""
         lost = h["outcome"]["neither"] + h["outcome"]["opposition"]
-        return (f"The chance that {esc(h['government']['label'])} lose their majority is {prob(lost)}: a tie or a "
+        return (f"The chance that {esc(h['government']['label'])} lose their majority is {prob(lost)}: "
+                f"{'a tie' if h.get('two_sided', True) else 'no majority for either side'} or a "
                 f"majority for the other parties. A majority for {esc(h['opposition']['label'])} is not a Labour-led "
                 f"government unless all four agree to one, and Opportunity has said it could work with either "
                 f"Labour or National.\n")
@@ -447,7 +450,8 @@ class SpecialsPage:
         h = self.house
         if not h:
             return ""
-        result = {"government": "Majority kept", "neither": "Exact tie", "opposition": "Majority lost"}
+        result = {"government": "Majority kept", "neither": self.outcome_label("neither", short=True),
+                  "opposition": "Majority lost"}
         rows = [["; ".join(esc(x) for x in r["steps"]), signed(r["margin"], "+.0f") if r["margin"] else "0",
                  result[r["outcome"]], f"**{num(r['p'] * 100, 1)}%**"] for r in h["routes"]["top"]]
         return table(["What changes from election night", "Margin", "Result", "Chance"], rows)
@@ -467,6 +471,8 @@ class SpecialsPage:
         if not h:
             return ""
         r, o = h["routes"], h["outcome"]
+        if not r.get("minimal"):                # a party sits with neither side: a margin is not a majority
+            return ""
         weights = {c["kind"]: c["weight"] for c in r["components"]}
         return (f"The Government's margin over every other party was {r['margin_election_night']} seats on election "
                 f"night. A list seat lost by a governing party that has list seats moves the margin by "
@@ -517,8 +523,8 @@ class SpecialsPage:
             + [("no_enrolment_adjustment", "No enrolment adjustment")]
         rows = [[f"**{label}**" if key == "model" else label] + [prob(sc[key][o]) for o in OUTCOME_ORDER]
                 for key, label in names if key in sc]
-        return table(["Scenario", "Government keeps its majority", "Exact tie", "Other parties have a majority"],
-                     rows)
+        return table(["Scenario", "Government keeps its majority", self.outcome_label("neither", short=True),
+                      "Other parties have a majority"], rows)
 
     def house_history_table(self) -> str:
         """Past elections: each party's share of ordinary and of special votes."""
@@ -583,11 +589,17 @@ class SpecialsPage:
         gov, opp = h["government"], h["opposition"]
         dist = sorted((int(k), p * 100) for k, p in h["margin"].items())
         dist = [(k, p) for k, p in dist if p >= 0.05]
-        groups = [("government", [kp for kp in dist if kp[0] > 0], self.colour(gov["parties"][0]),
-                   f"{gov['label']} majority"),
-                  ("neither", [kp for kp in dist if kp[0] == 0], charts.MUTED, "Exact tie"),
-                  ("opposition", [kp for kp in dist if kp[0] < 0], self.colour(opp["parties"][0]),
-                   "Majority for the other parties" if narrow else f"{opp['label']} majority")]
+        # each margin's simulations by what they actually gave: a negative margin is a majority for the other
+        # side only when no party sits outside the two sides
+        split = h.get("margin_outcome") or {str(k): {"government": p / 100 if k > 0 else 0.0,
+                                                     "neither": p / 100 if k == 0 else 0.0,
+                                                     "opposition": p / 100 if k < 0 else 0.0} for k, p in dist}
+        part = lambda key: [(k, split[str(k)][key] * 100) for k, _ in dist if split[str(k)][key] > 0]  # noqa: E731
+        groups = [("government", part("government"), self.colour(gov["parties"][0]), f"{gov['label']} majority"),
+                  ("neither", part("neither"), charts.MUTED, self.outcome_label("neither", short=True)),
+                  ("opposition", part("opposition"), self.colour(opp["parties"][0]),
+                   "Majority for the other parties" if narrow and h.get("two_sided", True)
+                   else f"{opp['label']} majority")]
         fig = go.Figure()
         for _key, pts, colour, name in groups:
             if not pts:
@@ -608,6 +620,7 @@ class SpecialsPage:
                          showgrid=False, title_text="Government seats minus every other party's")
         fig.update_yaxes(range=[0, top * 1.35], ticksuffix="%", gridcolor=charts.GRID, zeroline=False, nticks=5)
         fig.update_layout(height=340 if not narrow else 320, margin=dict(l=40, r=12, t=20, b=50), bargap=0.16,
+                          barmode="stack",
                           plot_bgcolor="white", paper_bgcolor="white", font=charts.FONT, dragmode=False,
                           legend=dict(orientation="h", y=-0.28 if not narrow else -0.4, x=0, traceorder="normal"))
         return charts._no_zoom(fig)

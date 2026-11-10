@@ -46,6 +46,7 @@ from .model import (
 from .simulate import Simulation, Target, VolumeShift, simulate
 
 OUT = "specials"
+ELECTORATE_SEATS = Path("data") / "reference" / "electorate_seats.csv"     # electorates won at past elections
 QUANTILES = [0.05, 0.25, 0.5, 0.75, 0.95]
 
 
@@ -544,9 +545,11 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
         summary["backtest"] = summarise(rows)
         _write_csv(out / "backtest_summary.csv", summary["backtest"])
         if party is not None:
-            won = natdata.read_electorate_seats(cfg.paths.root / "data" / "reference" / "electorate_seats.csv",
-                                                party.names)
-            prow = backtest_party_vote(party.history, pair[1], party.cfg["priors"], bmcmc, electorates=won, n=nb,
+            won = natdata.read_electorate_seats(cfg.paths.root / ELECTORATE_SEATS, party.names)
+            small = natdata.small_winners(cfg.paths.root / party.cfg["data_dir"], cfg.paths.root / ELECTORATE_SEATS,
+                                          party.names)
+            prow = backtest_party_vote(party.history, pair[1], party.cfg["priors"], bmcmc, electorates=won,
+                                       small=small, n=nb,
                                        df=df, seed=11, log=_log, nseats=int(party.cfg.get("seats", 120)),
                                        threshold=float(party.cfg.get("threshold", 0.05)),
                                        volume_error_sd=float(party.cfg.get("backtest", {}).get("volume_error_sd", 0.04)))
@@ -597,7 +600,10 @@ def run_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = True,
     """The stage, skipped when its inputs (data, config/specials.yml and this package) are unchanged."""
     scfg = load_config(cfg)
     out = cfg.paths.output / OUT
-    extra = [cfg.paths.root / scfg["parliament"]["data_dir"]] if scfg.get("parliament") else []
+    extra = []
+    if scfg.get("parliament"):                # the House also reads past electorates won and the seat allocator
+        extra = [cfg.paths.root / scfg["parliament"]["data_dir"], cfg.paths.root / ELECTORATE_SEATS,
+                 Path(__file__).parents[1] / "forecast" / "seats.py"]
     inputs = [cfg.paths.root / scfg["data_dir"], *extra, cfg.paths.config / "specials.yml", Path(__file__).parent,
               f"quick={quick}", f"backtest={run_backtest}"]
     return StageCache(cfg.paths.processed / "stamps").run(

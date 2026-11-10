@@ -203,6 +203,28 @@ def read_electorate_seats(path: Path, names: PartyNames) -> dict[int, np.ndarray
     return out
 
 
+def small_winners(data_dir: Path, seats_csv: Path, names: PartyNames) -> dict[int, list[dict]]:
+    """Parties pooled as "Other" that won an electorate at a past election (United Future, Mana), with their own
+    votes: {year: [{party, electorates, start, final}]}. ``start`` is the election-night count where archived,
+    else the official ordinary votes. A party that wins an electorate takes part in the allocation of seats, so
+    past Houses cannot be rebuilt from the pooled votes alone."""
+    official = _read(Path(data_dir) / "party-votes.csv")
+    prelim = _read(Path(data_dir) / "preliminary-party-votes.csv")
+    out: dict[int, list[dict]] = {}
+    for r in _read(seats_csv):
+        if names.group(r["party"]) != "Other" or not int(r["electorates"]):
+            continue
+        year, key = int(r["year"]), electorate_key(r["party"])
+        mine = [o for o in official if int(o["year"]) == year and electorate_key(o["party"]) == key]
+        if not mine:
+            raise ValueError(f"{seats_csv}: {r['party']} won an electorate in {year} but has no party votes on file")
+        night = [int(x["votes"]) for x in prelim if int(x["year"]) == year and electorate_key(x["party"]) == key]
+        out.setdefault(year, []).append({
+            "party": r["party"], "electorates": int(r["electorates"]), "final": sum(int(o["total"]) for o in mine),
+            "start": sum(night) if night else sum(int(o["ordinary"]) for o in mine)})
+    return out
+
+
 if __name__ == "__main__":
     built = build_party_votes(Path(sys.argv[1]), Path(sys.argv[2]))
     for y in sorted({r["year"] for r in built}):
