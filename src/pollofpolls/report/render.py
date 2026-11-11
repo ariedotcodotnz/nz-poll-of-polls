@@ -18,7 +18,7 @@ import yaml
 from ..config import Config
 from . import charts
 from .site import BACKTEST_DOWNLOADS, CHARTS, DOWNLOADS, Site, long_date
-from .specials import DOWNLOADS as SPECIALS_DOWNLOADS
+from .specials import download_files as specials_downloads
 
 
 def draw_static_charts(site: Site) -> None:
@@ -66,7 +66,7 @@ def publish_files(root: Path | None = None) -> None:
     for f in DOWNLOADS + CHARTS:
         if (out / f).exists():
             shutil.copyfile(out / f, site_dir / f)
-    specials = [f for f in SPECIALS_DOWNLOADS if (out / "specials" / f).exists()]
+    specials = specials_downloads(out / "specials")
     if specials:
         (site_dir / "specials").mkdir(exist_ok=True)
         for f in specials:

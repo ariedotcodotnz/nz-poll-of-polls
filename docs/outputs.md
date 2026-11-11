@@ -79,11 +79,12 @@ Written by `pollofpolls specials`; see [Special votes](specials.md). Margins are
 | `routes.csv` | the routes in `house.routes`: what changes from election night, its probability and result |
 | `party_vote_history.csv` | one row per party and past election: ordinary, overseas and domestic special votes and shares, the final share and, where archived, the election-night share |
 | `party_vote_backtest.csv` | one row per party and past election: start, actual and forecast final share, interval coverage, the errors of the model and two rules of thumb, and seats at the start, in the result and in the model |
-| `seats.csv` | one row per seat: election-night leader and margin, special votes, margin quantiles, win probabilities and the share the trailing candidate needs |
+| `seats.csv` | one row per seat: the two parties its margin is between (`first`, `second`), election-night leader and margin, special votes, margin quantiles, win probabilities and the share the trailing candidate needs |
 | `candidates.csv` | one row per candidate: party, election-night votes, mean special votes, final-vote quantiles |
 | `history.csv` | one row per past seat and election: special votes per ordinary vote, overseas share, Labour's share of the two leaders in ordinary and special votes (overall and per category), the shift, and, where the election-night count is archived, how the official count changed the ordinary votes and the margin |
 | `backtest.csv` | one row per past seat, election and method: start and actual margins, CRPS, absolute error, interval coverage, Brier score and log loss |
 | `backtest_summary.csv` | those scores averaged per method |
+| `history_<pair>.csv`, `margins_<pair>.npz`, `margin_draws_<pair>.csv`, `backtest_<pair>.csv`, `backtest_summary_<pair>.csv` | the same files for each contest between another pair of parties (`other_contests` in the config), such as `labour_green` for Wellington Bays. Margins are that pair's second party minus its first (Green minus Labour). The contest's seats are also in `forecast.json` under `contests` (the same fields as `seats`, with its own `scenarios`, posterior summaries and `backtest`) and in `seats.csv` and `candidates.csv` |
 | `margins.npz` | simulated final margins (`margin`, simulations × seats) and Labour's share of the two leaders' special votes (`special_share`), for the charts |
 
 The site copies the CSV and JSON files into `specials/`.

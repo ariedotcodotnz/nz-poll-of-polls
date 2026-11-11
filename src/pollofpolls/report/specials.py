@@ -24,6 +24,14 @@ OUTCOME_ORDER = ("government", "neither", "opposition")
 YEAR_SYMBOLS = ["circle", "square", "diamond", "triangle-up", "cross"]
 
 
+def download_files(out: Path) -> list[str]:
+    """The files in output/specials/ the page links to: the fixed list, and each other contest's history and
+    backtest (history_<pair>.csv, backtest_<pair>.csv)."""
+    extra = sorted(f.name for pattern in ("history_*.csv", "backtest_*.csv") for f in out.glob(pattern)
+                   if not f.name.startswith("backtest_summary"))
+    return [f for f in DOWNLOADS if (out / f).exists()] + [f for f in extra if f not in DOWNLOADS]
+
+
 def display_name(name: str) -> str:
     """ "McANULTY, Kieran" -> "Kieran McAnulty"; "WYLIE-VAN EERD, Ben" -> "Ben Wylie-Van Eerd"."""
     surname, _, given = name.partition(",")
@@ -72,6 +80,11 @@ class SpecialsPage:
     @property
     def seats(self) -> list[dict]:
         return self.data["seats"]
+
+    @cached_property
+    def contests(self) -> list[ContestPage]:
+        """The close seats between other pairs of parties, each a page of its own data."""
+        return [ContestPage(self, c) for c in (self.data or {}).get("contests") or []]
 
     def _csv(self, name: str) -> list[dict]:
         path = self.out / name
@@ -198,9 +211,11 @@ class SpecialsPage:
                 + table([f"Seats {esc(j['party'])} wins", "Chance"], [[c[0], c[1]] for c in cells]))
 
     def seat_tabs(self) -> str:
+        """Every candidate's forecast, one tab per seat (no tabs for a single seat)."""
         if not self.available:
             return ""
-        parts = ["::: {.panel-tabset}\n"]
+        tabs = len(self.seats) > 1
+        parts = ["::: {.panel-tabset}\n"] if tabs else []
         for s in self.seats:
             rows = []
             for c in sorted(s["candidates"], key=lambda c: -c["final"]["mean"]):
@@ -209,11 +224,12 @@ class SpecialsPage:
                              esc(c["party"]), f"{c['preliminary']:,}", f"{c['specials_mean']:,.0f}",
                              f"**{f['q50']:,.0f}**", f"{f['q05']:,.0f}–{f['q95']:,.0f}"])
             p, oc = s["preliminary"], s["official_change"]
-            parts.append(f"## {esc(s['name'])}\n\n"
+            split = (f" ({p['advance']:,} in advance, {p['election_day']:,} on election day)"
+                     if p.get("advance") is not None else "")
+            parts.append((f"## {esc(s['name'])}\n\n" if tabs else "")
                          + table(["Candidate", "Party", "Election night", "Special votes (mean)",
                                   "Official result (median)", "90% interval"], rows)
-                         + f"\n{p['votes']:,} valid candidate votes on election night ({p['advance']:,} in advance, "
-                           f"{p['election_day']:,} on election day). Expected special votes "
+                         + f"\n{p['votes']:,} valid candidate votes on election night{split}. Expected special votes "
                            f"{votes(s['specials']['q50'])}, of which about {votes(s['specials']['overseas_mean'])} "
                            f"from overseas. The official count's change to the ordinary votes moves the margin by "
                            f"{votes(oc['margin']['q05'])} towards {esc(self.pair[0])} to "
@@ -222,7 +238,7 @@ class SpecialsPage:
                            f"{votes(max(abs(oc['margin']['q25']), abs(oc['margin']['q75'])) + 1)} votes. "
                            f"Other candidates' special votes are shared in proportion to their election-night "
                            f"votes.\n")
-        return "\n".join(parts) + "\n:::\n"
+        return "\n".join(parts) + ("\n:::\n" if tabs else "")
 
     def history_table(self) -> str:
         rows = []
@@ -363,7 +379,7 @@ class SpecialsPage:
                 "candidate.\n")
 
     def downloads(self) -> str:
-        files = [f for f in DOWNLOADS if (self.out / f).exists()]
+        files = download_files(self.out)
         if not files:
             return ""
         return "- Special votes: " + " · ".join(f"[{esc(f)}](specials/{f})" for f in files) + "\n"
@@ -508,10 +524,14 @@ class SpecialsPage:
                               f"overtakes {esc(a['leader_party'])})" for a in h["assumed_seats"])
             text += (f"\nThree close seats are not contests between those two parties, so the model cannot simulate "
                      f"them. Each has an assumed chance of changing hands, set in the configuration: {items}. "
-                     f"The other {h['n_electorates'] - len(h['other_seats']) - len(self.seats) - len(h['assumed_seats'])} "
-                     f"electorates are taken as won by their election-night leaders. Wellington Bays, where Labour "
-                     f"leads the Greens by 140, is one of them: either result leaves both parties' seat totals "
-                     f"unchanged.\n")
+                     f"The other {h['n_electorates'] - len(h['other_seats']) - len(self.seats) - len(h['assumed_seats']) - sum(len(c.seats) for c in self.contests)} "
+                     f"electorates are taken as won by their election-night leaders.")
+            for c in self.contests:
+                names = " and ".join(esc(x["name"]) for x in c.seats)
+                text += (f" {names}, between {esc(c.pair[0])} and {esc(c.pair[1])}, "
+                         f"{'has' if len(c.seats) == 1 else 'have'} a forecast of "
+                         f"{'its' if len(c.seats) == 1 else 'their'} own [below](#{c.anchor}).")
+            text += "\n"
         return text
 
     def house_scenario_table(self) -> str:
@@ -626,11 +646,8 @@ class SpecialsPage:
         return charts._no_zoom(fig)
 
     # --------------------------------------------------------------------------------------- figures
-    def show(self, name: str, narrow: bool = False) -> None:
-        from IPython.display import HTML, display
-
-        if not self.available or (name == "house" and not self.house):
-            return
+    def figure_html(self, name: str, narrow: bool = False) -> str:
+        """A figure as an HTML fragment; the first one on the page also loads Plotly."""
         import plotly.offline
 
         html = self.figure(name, narrow).to_html(full_html=False, include_plotlyjs=False, include_mathjax=False,
@@ -639,7 +656,14 @@ class SpecialsPage:
             src = f"https://cdn.plot.ly/plotly-{plotly.offline.get_plotlyjs_version()}.min.js"
             html = f'<script src="{src}" charset="utf-8"></script>\n{html}'
             self._plotly_loaded = True
-        display(HTML(html))
+        return html
+
+    def show(self, name: str, narrow: bool = False) -> None:
+        from IPython.display import HTML, display
+
+        if not self.available or (name == "house" and not self.house):
+            return
+        display(HTML(self.figure_html(name, narrow)))
 
     def figure(self, name: str, narrow: bool = False):
         return {"margins": self.margin_figure, "needs": self.needs_figure, "house": self.house_figure}[name](narrow)
@@ -703,15 +727,16 @@ class SpecialsPage:
         seats = self.seats
         names = [s["name"] for s in seats]
         ys = {n: i for i, n in enumerate(reversed(names))}
+        past = {s.get("history", s["name"]): ys[s["name"]] for s in seats}     # the seat whose history is shown
         fig = go.Figure()
         xs = []
         years = sorted({int(r["year"]) for r in self.history})
         for k, y in enumerate(years):
-            rows = [r for r in self.history if int(r["year"]) == y and r["electorate"] in ys]
+            rows = [r for r in self.history if int(r["year"]) == y and r["electorate"] in past]
             x = [float(r["special_shift_pp"]) for r in rows]
             xs += x
             fig.add_trace(go.Scatter(
-                x=x, y=[ys[r["electorate"]] + 0.12 + 0.09 * k for r in rows], mode="markers", name=f"{y} election",
+                x=x, y=[past[r["electorate"]] + 0.12 + 0.09 * k for r in rows], mode="markers", name=f"{y} election",
                 marker=dict(symbol=YEAR_SYMBOLS[k % len(YEAR_SYMBOLS)], size=10, color=charts.MUTED,
                             line=dict(color="white", width=2)),
                 hovertemplate=[f"{r['electorate']} {y}: specials {float(r['special_shift_pp']):+.1f} points "
@@ -754,7 +779,135 @@ class SpecialsPage:
         fig.update_xaxes(range=[-lim, lim], gridcolor=charts.GRID, zeroline=False, ticksuffix="",
                          title_text=f"Shift towards {b} (points)" if narrow else
                          f"Special votes' shift towards {b}, in points of the two leaders' share")
-        fig.update_layout(height=120 * len(names) + 130, margin=dict(l=10, r=10, t=30, b=50), plot_bgcolor="white",
+        height = 120 * len(names) + 130
+        legend = dict(orientation="h", y=-0.22 if not narrow else -0.3, x=0)
+        if len(names) < 3:                       # a short chart: keep the legend clear of the axis title
+            height += 40
+            legend |= {"y": -(70 if not narrow else 80) / (height - 80), "yanchor": "top"}
+        fig.update_layout(height=height, margin=dict(l=10, r=10, t=30, b=50), plot_bgcolor="white",
                           paper_bgcolor="white", font=charts.FONT, dragmode=False,
-                          legend=dict(orientation="h", y=-0.22 if not narrow else -0.3, x=0))
+                          legend=legend)
         return charts._no_zoom(fig)
+
+
+class ContestPage(SpecialsPage):
+    """The seats of a contest between another pair of parties (forecast.json's ``contests``): the same tables
+    and figures as the main page, from the contest's own seats, history and simulated margins."""
+
+    def __init__(self, parent: SpecialsPage, contest: dict):
+        self.parent, self.contest = parent, contest
+        self.cfg, self.out, self.colours = parent.cfg, parent.out, parent.colours
+
+    @property
+    def _plotly_loaded(self) -> bool:
+        return self.parent._plotly_loaded
+
+    @_plotly_loaded.setter
+    def _plotly_loaded(self, value: bool) -> None:
+        self.parent._plotly_loaded = value
+
+    @cached_property
+    def data(self) -> dict:
+        return {**self.parent.data, "backtest": None, **self.contest, "contests": []}
+
+    @property
+    def slug(self) -> str:
+        return self.contest["slug"]
+
+    @property
+    def anchor(self) -> str:
+        return "contest-" + self.slug.replace("_", "-")
+
+    @cached_property
+    def history(self) -> list[dict]:
+        return self._csv(f"history_{self.slug}.csv")
+
+    @cached_property
+    def margins(self) -> dict[str, np.ndarray]:
+        with np.load(self.out / f"margins_{self.slug}.npz", allow_pickle=False) as z:
+            return {k: z[k] for k in z.files}
+
+    def intro(self) -> str:
+        d, (a, b) = self.data, self.pair
+        parts = []
+        for s in self.seats:
+            lead = s["leader_election_night"]
+            trail = b if lead == a else a
+            parts.append(f"On election night {self.contender(s, lead)} ({esc(lead)}) led "
+                         f"{self.contender(s, trail)} ({esc(trail)}) by {votes(s['preliminary']['margin'])} votes in "
+                         f"{esc(s['name'])}, of {s['preliminary']['votes']:,} counted.")
+        seats = d["data"]["electorates"]
+        years = d["data"]["years"]
+        text = " ".join(parts) + (
+            f" The model above is fitted to {esc(self.parent.pair[0])} against {esc(self.parent.pair[1])}, so this "
+            f"contest has its own: the same model, fitted to the official results of "
+            f"{', '.join(map(esc, seats[:-1]))} and {esc(seats[-1])} at the "
+            f"{', '.join(map(str, years[:-1]))} and {years[-1]} elections ({d['data']['n_seat_elections']} "
+            f"seat-elections), with the {esc(a)} candidate in place of {esc(self.parent.pair[0])}'s. It shares each "
+            f"simulation's national special-vote count and party-vote lean with the rest of the page.")
+        notes = " ".join(esc(s["note"]) for s in self.seats if s.get("note"))
+        for s in self.seats:                     # what the seat's past results, on its boundaries, came to
+            rows = [r for r in self.history if r["electorate"] == s.get("history") != s["name"]]
+            if rows and "notional" in s["history"]:
+                last = max(rows, key=lambda r: int(r["year"]))
+                notes += (f" On those boundaries the {last['year']} result would have been "
+                          f"{self.margin_text(int(last['final_margin']))}.")
+        if self.house:
+            text += (f" The winner does not change the House: the {esc(a)} and {esc(b)} seat totals are set by "
+                     f"their party votes, so the seat decides who sits, not how many.")
+        return text + (" " + notes if notes else "") + "\n"
+
+    def method_text(self) -> str:
+        d = self.data
+        post, shift, enrol = d["posterior"], d["election_shift_pp"]["forecast_domestic"], d["enrolment_shift_pp"]
+        a, b = self.pair
+        past = "; ".join(f"{y}: {signed(post['years'][str(y)]['domestic_pp']['q50'])}" for y in d["data"]["years"])
+        moves = ("does not move this contest" if abs(enrol["q50"]) < 0.05
+                 else f"moves this contest by {signed(enrol['q50'])} points")
+        text = (f"Fitted to those past results, domestic special votes moved towards the {esc(b)} candidate, against "
+                f"the {esc(a)} candidate, by {past} points in an evenly split seat. This year's shift is forecast at "
+                f"{signed(shift['q50'])} points (90%: {signed(shift['q05'])} to {signed(shift['q95'])}). The "
+                f"enrolment change is assumed to have removed voters who leaned to both parties alike, so on "
+                f"average it {moves}, but it could go either way "
+                f"(90%: {signed(enrol['q05'])} to {signed(enrol['q95'])} points). The official count's change to the "
+                f"ordinary votes is the one learned from the {esc(self.parent.pair[0])}–{esc(self.parent.pair[1])} "
+                f"seats.")
+        bt = {r["method"]: r for r in d.get("backtest") or []}
+        if "model" in bt and len(bt) > 1:
+            m = bt["model"]
+            best = min((r for r in bt.values() if r["method"] != "model"), key=lambda r: r["crps_votes"])
+            text += (f" In a backtest that refits the model without each election in turn, its CRPS was "
+                     f"{num(m['crps_votes'])} votes of final margin, against {num(best['crps_votes'])} for the best "
+                     f"rule of thumb ({esc(best['label'].lower())}); its 90% intervals held "
+                     f"{num(m['coverage_90'] * 100, 0)}% of the {m['n_cases']} results.")
+        return text + "\n"
+
+    def _figure_block(self, name: str) -> str:
+        return "\n".join(f"::: {{.{cls}}}\n```{{=html}}\n{self.figure_html(name, narrow)}\n```\n:::\n"
+                          for cls, narrow in (("wide-only", False), ("narrow-only", True)))
+
+    def section(self) -> str:
+        """The contest's whole section of the page, as Markdown with its figures embedded."""
+        a, b = self.pair
+        one = len(self.seats) == 1
+        where = f" in {esc(self.seats[0]['history'])}" if one and self.seats[0].get("history") else ""
+        parts = [f"## {esc(self.contest['title'])} {{#{self.anchor}}}\n", self.intro(), self.tiles(),
+                 "### Who wins\n", self.seat_table(),
+                 "### How the final margin could land\n",
+                 (f"Each bar is the share of {self.data['n_sims']:,} simulated official counts that ended with that "
+                  f"margin: the {esc(b)} candidate's votes minus the {esc(a)} candidate's. The dark line is a tie; "
+                  f"the grey line is the election-night margin.\n"),
+                 self._figure_block("margins"), self.margin_table(),
+                 "### What the trailing candidate needs\n", self.needs_table(),
+                 (f"\nThe grey shapes are how much more {esc(b)} the special votes were than the ordinary votes at "
+                  f"past elections{where}. The black bar is this year's forecast, and the tinted zone is where the "
+                  f"trailing candidate overtakes.\n"),
+                 self._figure_block("needs"),
+                 "### Under a past election's pattern\n", self.scenario_table(),
+                 "### Every candidate\n" if one else "### Each seat\n", self.seat_tabs(),
+                 "### How this forecast was made\n", self.method_text(),
+                 f"\nSpecial votes in the {esc(a)}–{esc(b)} seats since {self.data['data']['years'][0]}:\n",
+                 self.history_table()]
+        if not one:
+            parts.insert(-4, "### The seats together\n" + "\n" + self.joint_text())
+        return "\n".join(parts) + "\n"

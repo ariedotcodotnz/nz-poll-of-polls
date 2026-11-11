@@ -166,6 +166,12 @@ print(page.other_seats_table())
 print(page.seat_tabs())
 ```
 
+```{python}
+#| output: asis
+for contest in page.contests:
+    print(contest.section())
+```
+
 ## How the forecast works {#method}
 
 The official result is the election-night count, plus the official count's change to the ordinary votes, plus
@@ -286,7 +292,8 @@ print(page.downloads())
 ```
 
 Sources: Electoral Commission results by voting place (official results 2008–2023, preliminary results 2026);
-the 2026 preliminary party votes and electorate leads as republished by RNZ and Wikipedia;
+the 2026 preliminary party votes, electorate leads and Wellington Bays candidate votes as republished by RNZ and
+Wikipedia;
 election-night counts for 2017, 2020 and 2023 from the Commission's archived pages, via the Internet Archive; national
 special-vote figures from the Commission's official-results releases and its 8 November 2026 estimate; candidates'
 parties from Wikipedia's list of 2026 candidates by electorate.

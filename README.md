@@ -105,6 +105,9 @@ model in NumPyro, fitted to the Electoral Commission's results by voting place f
   each party's special votes against its ordinary votes, tied to the seats so they move together; then seats by
   Sainte-Laguë with overhang, the chance each side has a majority, and the routes that get there.
 
+* **seats between other parties**: Wellington Bays, where Labour leads the Greens by 140, has the same model
+  fitted to past Labour–Green contests (Rongotai, Wellington Central, Auckland Central).
+
 Leave-one-election-out backtests score it against rules of thumb. Method and data: [docs/specials.md](docs/specials.md).
 
 ## Evaluation

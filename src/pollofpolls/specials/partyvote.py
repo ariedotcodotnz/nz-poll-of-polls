@@ -42,11 +42,17 @@ def lean(specials: np.ndarray, ordinary: np.ndarray) -> np.ndarray:
     return np.log(s[..., 1:] / s[..., :1]) - np.log(o[..., 1:] / o[..., :1])
 
 
-def pooled(votes: np.ndarray, second: int) -> np.ndarray:
-    """Votes (..., K) as [reference, second party, everyone else]."""
+def pooled(votes: np.ndarray, second: int, first: int = 0) -> np.ndarray:
+    """Votes (..., K) as [first party, second party, everyone else]."""
     v = np.asarray(votes, float)
-    rest = v.sum(-1) - v[..., 0] - v[..., second]
-    return np.stack([v[..., 0], v[..., second], rest], axis=-1)
+    rest = v.sum(-1) - v[..., first] - v[..., second]
+    return np.stack([v[..., first], v[..., second], rest], axis=-1)
+
+
+def pair_link(h: NationalHistory, second: int, first: int = 0) -> np.ndarray:
+    """Each past election's domestic lean (T, 2) of [the second party, everyone else pooled] against the first:
+    the covariate of an electorate model fitted to that pair of parties."""
+    return lean(pooled(h.specials[:, DOM], second, first), pooled(h.ordinary, second, first))
 
 
 @dataclass
@@ -73,7 +79,7 @@ def build_party_vote_data(h: NationalHistory, second: str, years: list[int] | No
     y = lean(specials, ordinary[:, None, :])
     var = 1.0 / (specials[..., 1:] + 0.5) + 1.0 / (specials[..., :1] + 0.5)
     k = h.parties.index(second)
-    link = lean(pooled(specials[:, DOM], k), pooled(ordinary, k))
+    link = lean(pooled(specials[:, DOM], k), pooled(ordinary, k))            # pair_link, for these years
     return PartyVoteData(parties=h.parties, years=[h.years[t] for t in keep], y=y, var=var,
                          stood=ordinary[:, 1:] >= MIN_VOTES, second=k, link=link)
 
@@ -136,14 +142,21 @@ def draw_lean(post: Posterior, data: PartyVoteData, n: int, rng: np.random.Gener
     return np.where(data.stood[t][None, None, :], data.y[t][None], modelled)
 
 
-def link_covariate(lean_draws: np.ndarray, ordinary: np.ndarray, second: int) -> np.ndarray:
-    """The electorate model's covariate (n, 2) for an election whose domestic lean is ``lean_draws[:, DOM]``:
-    the lean of the second party and of everyone else pooled, given the ordinary votes (K,) it applies to."""
+def against(shift: np.ndarray, ordinary: np.ndarray, second: int, first: int = 0) -> np.ndarray:
+    """A shift (n, K-1) of every party's special votes against the reference, as the shift (n, 2) of
+    [the second party, everyone else pooled] against the first, given the ordinary votes (K,) it applies to."""
     o = np.asarray(ordinary, float)
-    dom = lean_draws[:, DOM]                                                 # (n, K-1), parties 1..K-1
-    rest = [k for k in range(1, len(o)) if k != second]
-    pooled_rest = np.log((o[rest][None, :] * np.exp(dom[:, [k - 1 for k in rest]])).sum(1) / o[rest].sum())
-    return np.stack([dom[:, second - 1], pooled_rest], axis=1)
+    full = np.concatenate([np.zeros((len(shift), 1)), shift], axis=1)       # the reference's own shift is zero
+    rest = [k for k in range(len(o)) if k not in (first, second)]
+    pooled_rest = np.log((o[rest][None, :] * np.exp(full[:, rest])).sum(1) / o[rest].sum())
+    return np.stack([full[:, second] - full[:, first], pooled_rest - full[:, first]], axis=1)
+
+
+def link_covariate(lean_draws: np.ndarray, ordinary: np.ndarray, second: int, first: int = 0) -> np.ndarray:
+    """The electorate model's covariate (n, 2) for an election whose domestic lean is ``lean_draws[:, DOM]``:
+    the lean of the second party and of everyone else pooled against the first (by default the reference),
+    given the ordinary votes (K,) it applies to."""
+    return against(lean_draws[:, DOM], ordinary, second, first)
 
 
 @dataclass

@@ -15,13 +15,17 @@ Writes output/specials/:
                       change of majority
     party_vote_history.csv   past elections' ordinary and special party votes, as the model sees them
     party_vote_backtest.csv  leave-one-election-out forecasts of past elections' party votes
+
+and, for each contest between another pair of parties (config/specials.yml's ``other_contests``),
+history_<pair>.csv, margins_<pair>.npz, margin_draws_<pair>.csv and backtest_<pair>.csv, with its seats added
+to forecast.json (``contests``), seats.csv and candidates.csv.
 """
 
 from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -34,7 +38,14 @@ from . import national as natdata
 from . import parliament as parl
 from . import partyvote as pv
 from .backtest import backtest, backtest_party_vote, summarise, summarise_party_vote
-from .data import CATEGORIES, ElectorateCount, electorate_key, load_history, read_preliminary_xlsx
+from .data import (
+    CATEGORIES,
+    ElectorateCount,
+    candidate_party,
+    electorate_key,
+    load_history,
+    read_preliminary_xlsx,
+)
 from .model import (
     CATS,
     Posterior,
@@ -43,6 +54,8 @@ from .model import (
     build_specials_data,
     fit_official_count,
     fit_specials,
+    log_ratio,
+    softmax0,
 )
 from .simulate import Simulation, Target, VolumeShift, simulate
 
@@ -61,30 +74,146 @@ def load_config(cfg: Config) -> dict:
 
 
 @dataclass
+class Contest:
+    """Close seats between another pair of parties, fitted on their own past results (``other_contests``)."""
+    pair: list[str]
+    title: str
+    history: list[ElectorateCount]
+    seats: list[ElectorateCount]
+    keys: list[str]                 # per seat, the electorate key whose history stands for it
+    data_dir: Path
+    cfg: dict
+
+    @property
+    def slug(self) -> str:
+        return "_".join(electorate_key(p).replace(" ", "_") for p in self.pair)
+
+
+@dataclass
 class Inputs:
     scfg: dict
     history: list[ElectorateCount]
     seats: list[ElectorateCount]
     data_dir: Path
+    contests: list[Contest] = field(default_factory=list)
+
+
+def count_from_config(e: dict, year: int) -> ElectorateCount:
+    """An election-night count given in the configuration: ``candidates`` maps each name to {party, votes}."""
+    names = list(e["candidates"])
+    votes = np.array([float(e["candidates"][c]["votes"]) for c in names])
+    if "valid_votes" in e and votes.sum() != e["valid_votes"]:
+        raise ValueError(f"config/specials.yml: {e['name']}'s candidates have {votes.sum():.0f} votes, "
+                         f"not the {e['valid_votes']} valid votes given")
+    zero = np.zeros(len(names))
+    return ElectorateCount(
+        year=year, electorate=e["name"], number=e.get("number"), candidates=names,
+        parties=[candidate_party(e["candidates"][c]["party"]) for c in names], advance=zero, election_day=zero,
+        ordinary=votes.copy(), specials={}, total=votes.copy(), informal=e.get("informal"), official=False,
+        preliminary=votes.copy(), preliminary_informal=e.get("informal"), source="config/specials.yml")
+
+
+def _grouped_count(year: int, name: str, pair: list[str], ordinary: np.ndarray, specials: dict[str, np.ndarray],
+                   source: str) -> ElectorateCount:
+    """An official result held as [pair[0], pair[1], everyone else] instead of by candidate."""
+    total = ordinary + sum(specials.values())
+    zero = np.zeros(3)
+    return ElectorateCount(year=year, electorate=name, number=None, candidates=[*pair, "Other"],
+                           parties=[*pair, "Other"], advance=zero, election_day=zero, ordinary=ordinary,
+                           specials=specials, total=total, informal=None, official=True, source=source)
+
+
+def moved_places(c: ElectorateCount, patterns: list[str]) -> np.ndarray:
+    """Which of an official result's voting places match any of ``patterns`` (in the place's name and address
+    or the suburb it is listed under, ignoring case)."""
+    b = c.booths
+    text = [f"{sub} | {place}".lower() for sub, place in zip(b.suburbs or [""] * len(b.places), b.places)]
+    return np.array([any(p.lower() in t for p in patterns) for t in text])
+
+
+def notional_history(counts: list[ElectorateCount], name: str, parts: list[dict], pair: list[str]) -> list[ElectorateCount]:
+    """Past results redrawn on a new electorate's boundaries.
+
+    ``parts`` lists the old electorates it was made from: all of one, or the voting places of one that match
+    ``places``. For each past election the new electorate, ``name``, gets those ordinary votes. Special votes
+    are not counted by voting place, so a part-electorate's are shared out: the moved places take the same
+    special votes per ordinary vote as the whole electorate, and they differ from the places' own ordinary
+    votes as the whole electorate's special votes differed from its ordinary votes. The old electorates are
+    replaced: one used whole disappears, one used in part keeps what is left as "<name> (rest)". Every result
+    is held as [pair[0], pair[1], everyone else], so the votes are counted once and nothing is lost.
+    """
+    by = {electorate_key(p["electorate"]): p for p in parts}
+    out = [c for c in counts if c.key not in by]
+    for year in sorted({c.year for c in counts}):
+        found = {c.key: c for c in counts if c.year == year and c.key in by}
+        usable = {k: c for k, c in found.items() if c.grouped(c.ordinary, pair) is not None}
+        if len(usable) < len(by):                 # without every part there is no notional result that year
+            out += found.values()
+            continue
+        ordinary = np.zeros(3)
+        specials = {k: np.zeros(3) for k in CATEGORIES}
+        for key, c in usable.items():
+            whole_o = c.grouped(c.ordinary, pair)
+            whole_s = {k: c.grouped(c.specials[k], pair) for k in CATEGORIES}
+            patterns = by[key].get("places")
+            if not patterns:
+                ordinary += whole_o
+                for k in CATEGORIES:
+                    specials[k] += whole_s[k]
+                continue
+            mask = moved_places(c, patterns)
+            if not mask.any():
+                raise ValueError(f"{c.electorate} {year}: no voting place matches {patterns}")
+            moved_o = c.grouped(c.booths.votes[mask].sum(0), pair)
+            rest_s = {}
+            for k in CATEGORIES:
+                shares = softmax0(log_ratio(moved_o) + log_ratio(whole_s[k]) - log_ratio(whole_o))
+                moved_s = np.minimum(np.rint(whole_s[k].sum() * moved_o.sum() / whole_o.sum() * shares), whole_s[k])
+                specials[k] += moved_s
+                rest_s[k] = whole_s[k] - moved_s
+            ordinary += moved_o
+            out.append(_grouped_count(year, f"{c.electorate} (rest)", pair, whole_o - moved_o, rest_s, c.source))
+        out.append(_grouped_count(year, name, pair, ordinary, specials, "notional"))
+    return out
+
+
+def read_seat(e: dict, data_dir: Path, year: int, pair: list[str]) -> ElectorateCount:
+    """One seat of the forecast election: the Commission's workbook (``file``) or votes given in the config."""
+    c = read_preliminary_xlsx(data_dir / e["file"], year, e["candidates"]) if e.get("file") else count_from_config(e, year)
+    if c.key != electorate_key(e["name"]):
+        raise ValueError(f"config/specials.yml: {e.get('file')} is {c.electorate}, not {e['name']}")
+    missing = [p for p in pair if c.party_index(p) is None]
+    if missing:
+        raise ValueError(f"config/specials.yml: {e['name']} has no candidate for {missing}")
+    c.electorate = e["name"]
+    return c
 
 
 def load_inputs(cfg: Config) -> Inputs:
     scfg = load_config(cfg)
     data_dir = cfg.paths.root / scfg["data_dir"]
     year = int(scfg["election"])
-    pair = scfg["pair"]
     history = load_history(data_dir, year).counts
-    seats = []
-    for e in scfg["electorates"]:
-        c = read_preliminary_xlsx(data_dir / e["file"], year, e["candidates"])
-        if c.key != electorate_key(e["name"]):
-            raise ValueError(f"config/specials.yml: {e['file']} is {c.electorate}, not {e['name']}")
-        missing = [p for p in pair if c.party_index(p) is None]
-        if missing:
-            raise ValueError(f"config/specials.yml: {e['name']} has no candidate for {missing}")
-        c.electorate = e["name"]
-        seats.append(c)
-    return Inputs(scfg, history, seats, data_dir)
+    seats = [read_seat(e, data_dir, year, scfg["pair"]) for e in scfg["electorates"]]
+    contests = []
+    for c in scfg.get("other_contests") or []:
+        cdir = cfg.paths.root / c["data_dir"]
+        past = load_history(cdir, year).counts
+        keys = []
+        for e in c["electorates"]:
+            hist = e.get("history", e["name"])
+            if isinstance(hist, dict):            # past results redrawn on this seat's boundaries
+                hist = hist.get("name", f"{e['name']} (notional)")
+                past = notional_history(past, hist, e["history"]["parts"], c["pair"])
+            keys.append(electorate_key(hist))
+        have = {h.key for h in past if h.grouped(h.ordinary, c["pair"]) is not None}
+        for e, k in zip(c["electorates"], keys):
+            if "history" in e and k not in have:
+                raise ValueError(f"config/specials.yml: {e['name']}'s history seat has no past results with "
+                                 f"candidates from both {c['pair'][0]} and {c['pair'][1]} in {cdir}")
+        contests.append(Contest(list(c["pair"]), c.get("title", " against ".join(c["pair"])), past,
+                                [read_seat(e, cdir, year, c["pair"]) for e in c["electorates"]], keys, cdir, c))
+    return Inputs(scfg, history, seats, data_dir, contests)
 
 
 # --------------------------------------------------------------------------------------- national inputs
@@ -203,8 +332,9 @@ def seat_summary(c: ElectorateCount, j: int, sim: Simulation, pair: list[str], c
         "name": c.electorate, "number": c.number, "contenders": contenders, "leader_election_night": lead,
         "candidates": cand,
         "preliminary": {"margin": int(start[1] - start[0]), "votes": int(c.preliminary.sum()),
-                        "informal": c.informal, "advance": int(c.advance.sum()),
-                        "election_day": int(c.election_day.sum()),
+                        "informal": c.informal,       # by voting place only with the Commission's workbook
+                        "advance": int(c.advance.sum()) if c.booths is not None else None,
+                        "election_day": int(c.election_day.sum()) if c.booths is not None else None,
                         "contender_share": float(_share(start))},
         "specials": {**_q(n_spec), "overseas_mean": float(sim.specials[:, j, 0].sum(1).mean()),
                      "per_ordinary": float((n_spec / sim.final[:, j].sum(1).clip(1)).mean())},
@@ -305,27 +435,29 @@ def extra_targets(party: PartyVote, pair: list[str], have: set[str]) -> list[tup
     return out
 
 
-def electorate_seats(party: PartyVote, pair: list[str], targets: list[Target], sim: Simulation,
+def electorate_seats(party: PartyVote, contests: list[tuple[list[str], list[Target], Simulation]],
                      rng: np.random.Generator) -> np.ndarray:
-    """Electorates won by each party in every simulation, (n, K)."""
-    groups, n = party.groups, len(sim.final)
+    """Electorates won by each party in every simulation, (n, K). ``contests`` are the simulated seats, each
+    group with the pair of parties its margins are between."""
+    groups, n = party.groups, len(contests[0][2].final)
     rows = {electorate_key(r["electorate"]): r for r in party.electorates}
     won = np.zeros((n, len(groups)), dtype=int)
     for r in party.electorates:
         won[:, party.names.index(r["party"])] += 1
-    k0, k1 = groups.index(pair[0]), groups.index(pair[1])
-    for j, t in enumerate(targets):
-        r = rows.get(t.key)
-        if r is None:
-            raise ValueError(f"{t.name} is not in the electorates file")
-        if r["party"] not in pair:
-            raise ValueError(f"{t.name}: the electorates file has {r['party']} leading, not one of {pair}")
-        lead = k1 if r["party"] == pair[1] else k0
-        other = k0 if lead == k1 else k1
-        m = sim.final[:, j, 1] - sim.final[:, j, 0]
-        flipped = (m < 0) if lead == k1 else (m > 0)
-        won[:, lead] -= flipped
-        won[:, other] += flipped
+    for pair, targets, sim in contests:
+        k0, k1 = groups.index(pair[0]), groups.index(pair[1])
+        for j, t in enumerate(targets):
+            r = rows.get(electorate_key(t.name))
+            if r is None:
+                raise ValueError(f"{t.name} is not in the electorates file")
+            if r["party"] not in pair:
+                raise ValueError(f"{t.name}: the electorates file has {r['party']} leading, not one of {pair}")
+            lead = k1 if r["party"] == pair[1] else k0
+            other = k0 if lead == k1 else k1
+            m = sim.final[:, j, 1] - sim.final[:, j, 0]
+            flipped = (m < 0) if lead == k1 else (m > 0)
+            won[:, lead] -= flipped
+            won[:, other] += flipped
     for a in party.cfg.get("assumed_seats") or []:
         r = rows.get(electorate_key(a["electorate"]))
         if r is None:
@@ -414,6 +546,24 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
     targets += [t for _, t in extra]
     max_add = float(priors["official_count"].get("max_addition", 0.2))
 
+    # the contests between other pairs of parties: the same model on their own past results
+    fitted = []
+    for i, c in enumerate(inp.contests):
+        if party is None:
+            raise ValueError("config/specials.yml: other_contests needs the parliament section")
+        first, second = party.groups.index(c.pair[0]), party.groups.index(c.pair[1])
+        lk = pv.pair_link(party.history, second, first)
+        cdata = build_specials_data(c.history, c.pair,
+                                    {y: lk[t] - lk.mean(0) for t, y in enumerate(party.history.years)})
+        if ref_year not in cdata.years:
+            raise ValueError(f"{c.data_dir}: no official results for the reference year {ref_year}")
+        cpost = fit_specials(cdata, priors, {**mcmc, "seed": seed + 1 + i}, progress)
+        ctargets = [Target(x.electorate, k, x.grouped(x.preliminary, c.pair), True) for x, k in zip(c.seats, c.keys)]
+        fitted.append({"contest": c, "data": cdata, "post": cpost, "targets": ctargets, "first": first,
+                       "second": second, "link_mean": lk.mean(0)})
+        _log(f"specials: {' v '.join(c.pair)} fitted on {cdata.n_rows} past seat-elections "
+             f"({', '.join(cdata.labels)}; divergences {cpost.diagnostics['n_divergent']})")
+
     def run(year: int | None = None, enrolment: bool = True):
         """One set of simulated counts: the seats, and with the party vote the whole House."""
         r = np.random.default_rng([seed, year or 0, int(enrolment)])
@@ -425,15 +575,23 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
                        year=year, kappa=nat["kappa"] if enrolment else None,
                        national=z if data.national is not None else None)
         if party is None:
-            return sim, None, None
+            return sim, None, None, []
+        csims = []                  # the same country-wide lean, volume and enrolment change as the seats above
+        for i, ft in enumerate(fitted):
+            zc = pv.link_covariate(lean, party.start, ft["second"], ft["first"]) - ft["link_mean"]
+            kc = pv.against(nat["kappa_party"], party.start, ft["second"], ft["first"]) if enrolment else None
+            csims.append(simulate(ft["post"], ft["data"], ft["targets"], volume, official=official, df=df, n=n,
+                                  max_addition=max_add, seed=seed + 1 + i, year=year, kappa=kc,
+                                  national=zc if ft["data"].national is not None else None))
         pvsim = pv.simulate_party_votes(party.start, lean, nat["specials"] * party.valid[0],
                                         nat["overseas"] * party.valid[1], r, change=party.change,
                                         kappa=nat["kappa_party"] if enrolment else None)
-        house = parl.elect(pvsim.final, electorate_seats(party, pair, targets, sim, r), party.groups,
+        simulated = [(pair, targets, sim)] + [(ft["contest"].pair, ft["targets"], cs) for ft, cs in zip(fitted, csims)]
+        house = parl.elect(pvsim.final, electorate_seats(party, simulated, r), party.groups,
                            int(party.cfg.get("seats", 120)), float(party.cfg.get("threshold", 0.05)))
-        return sim, pvsim, house
+        return sim, pvsim, house, csims
 
-    sim, pvsim, house = run()
+    sim, pvsim, house, csims = run()
     close = int(scfg.get("close_margin", 100))
     seats = [seat_summary(c, j, sim, pair, close) for j, c in enumerate(inp.seats)]
     p_second = lambda s: (s.final[:, :, 1] > s.final[:, :, 0]).mean(0)  # noqa: E731
@@ -444,9 +602,17 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
     # scenarios: replay each past election's special-vote shift; and no enrolment-change adjustment
     scenarios = {"model": {s["name"]: s["p_win"][pair[1]] for s in seats}}
     house_scenarios = {"model": house_odds(house)} if party else {}
+    for ft in fitted:
+        missing = [y for y in data.years if y not in ft["data"].years]
+        if missing:
+            raise ValueError(f"{ft['contest'].data_dir}: no official results for {missing}")
+    cscenarios = [{"model": {x.electorate: float(q) for x, q in zip(ft["contest"].seats, p_second(cs))}}
+                  for ft, cs in zip(fitted, csims)]
     alts = {f"like_{y}": {"year": y} for y in data.years} | {"no_enrolment_adjustment": {"enrolment": False}}
     for name, kw in alts.items():
-        alt, _, alt_house = run(**kw)
+        alt, _, alt_house, alt_cs = run(**kw)
+        for ft, sc, cs in zip(fitted, cscenarios, alt_cs):
+            sc[name] = {x.electorate: float(q) for x, q in zip(ft["contest"].seats, p_second(cs))}
         scenarios[name] = {c.electorate: float(p) for c, p in zip(inp.seats, p_second(alt))}
         if party:
             house_scenarios[name] = house_odds(alt_house)
@@ -477,6 +643,31 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
     }
     if "link_slope" in post.draws:
         summary["posterior"]["link_slope"] = _q(post["link_slope"][:, 0])
+
+    contests = []
+    for ft, cs, sc in zip(fitted, csims, cscenarios):
+        c, cdata, cpost = ft["contest"], ft["data"], ft["post"]
+        cseats = []
+        for j, (x, k, e) in enumerate(zip(c.seats, c.keys, c.cfg["electorates"])):
+            row = seat_summary(x, j, cs, c.pair, close)
+            if k != x.key:          # the seat whose past results stand for this one's
+                row["history"] = cdata.labels[cdata.electorate_index(k)]
+            cseats.append(row | {"note": e.get("note"), "source": x.source})
+        cwins = (cs.final[:, :, 1] > cs.final[:, :, 0]).sum(1)
+        csum = {"pair": c.pair, "slug": c.slug, "title": c.title, "seats": cseats, "scenarios": sc,
+                "joint": {"party": c.pair[1], "wins": {str(k): float((cwins == k).mean()) for k in range(len(cseats) + 1)}},
+                "election_shift_pp": {"forecast_domestic": _q(_even_seat_pp(cs.election[:, dom, 0])),
+                                      "forecast_overseas": _q(_even_seat_pp(cs.election[:, 0, 0]))},
+                "enrolment_shift_pp": _q(_even_seat_pp(pv.against(nat["kappa_party"], party.start, ft["second"],
+                                                                 ft["first"])[:, 0])),
+                "posterior": _posterior_summary(cpost, cdata, official),
+                "diagnostics": {"specials": cpost.diagnostics},
+                "data": {"years": cdata.years, "electorates": cdata.labels, "n_seat_elections": cdata.n_rows}}
+        if "link_slope" in cpost.draws:
+            csum["posterior"]["link_slope"] = _q(cpost["link_slope"][:, 0])
+        contests.append(csum)
+    if contests:
+        summary["contests"] = contests
 
     if party is not None:
         leaders = np.bincount([party.names.index(r["party"]) for r in party.electorates],
@@ -528,23 +719,37 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
         b = scfg.get("backtest", {})
         nb = min(n, 8000)
 
-        def linked(target_year: int, size: int, r: np.random.Generator):
-            h = party.history
-            if target_year not in h.years or len(h.years) < 3:
-                return None
-            d = pv.build_party_vote_data(h, pair[1], [y for y in h.years if y != target_year])
-            fit = pv.fit_party_vote(d, party.cfg["priors"], bmcmc)
-            draws = pv.draw_lean(fit, d, size, r, df=df)
-            z = pv.link_covariate(draws, h.ordinary[h.year_index(target_year)], d.second) - d.link_mean
-            return {y: d.link[t] - d.link_mean for t, y in enumerate(d.years)}, z
+        refits: dict[int, tuple] = {}            # the party-vote model without each election, fitted once
 
-        rows = backtest(inp.history, pair, priors, bmcmc, n=nb, df=df,
-                        volume_error_sd=float(b.get("volume_error_sd", 0.04)),
-                        overseas_error_sd=float(b.get("overseas_error_sd", 0.10)), seed=7, log=_log,
-                        link=linked if party is not None else None)
+        def linked_for(first: int, second: int):
+            """The national lean of ``second`` against ``first`` without the target election, for `backtest`."""
+            def linked(target_year: int, size: int, r: np.random.Generator):
+                h = party.history
+                if target_year not in h.years or len(h.years) < 3:
+                    return None
+                if target_year not in refits:
+                    d = pv.build_party_vote_data(h, pair[1], [y for y in h.years if y != target_year])
+                    refits[target_year] = (d, pv.fit_party_vote(d, party.cfg["priors"], bmcmc))
+                d, fit = refits[target_year]
+                draws = pv.draw_lean(fit, d, size, r, df=df)
+                lk = pv.pair_link(h.subset(d.years), second, first)
+                z = pv.link_covariate(draws, h.ordinary[h.year_index(target_year)], second, first) - lk.mean(0)
+                return {y: lk[t] - lk.mean(0) for t, y in enumerate(d.years)}, z
+            return linked
+
+        bkw = {"n": nb, "df": df, "volume_error_sd": float(b.get("volume_error_sd", 0.04)),
+               "overseas_error_sd": float(b.get("overseas_error_sd", 0.10)), "seed": 7, "log": _log}
+        rows = backtest(inp.history, pair, priors, bmcmc, **bkw,
+                        link=linked_for(0, party.data.second) if party is not None else None)
         _write_csv(out / "backtest.csv", rows)
         summary["backtest"] = summarise(rows)
         _write_csv(out / "backtest_summary.csv", summary["backtest"])
+        for ft, csum in zip(fitted, contests):
+            crows = backtest(ft["contest"].history, csum["pair"], priors, bmcmc, **bkw,
+                             link=linked_for(ft["first"], ft["second"]))
+            _write_csv(out / f"backtest_{csum['slug']}.csv", crows)
+            csum["backtest"] = summarise(crows)
+            _write_csv(out / f"backtest_summary_{csum['slug']}.csv", csum["backtest"])
         if party is not None:
             won = natdata.read_electorate_seats(cfg.paths.root / ELECTORATE_SEATS, party.names)
             small = natdata.small_winners(cfg.paths.root / party.cfg["data_dir"], cfg.paths.root / ELECTORATE_SEATS,
@@ -561,21 +766,27 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
         if (out / "backtest_summary.csv").exists():
             with open(out / "backtest_summary.csv", encoding="utf-8") as f:
                 summary["backtest"] = [{k: _parse(v) for k, v in r.items()} for r in csv.DictReader(f)]
+        for csum in contests:
+            path = out / f"backtest_summary_{csum['slug']}.csv"
+            if path.exists():
+                with open(path, encoding="utf-8") as f:
+                    csum["backtest"] = [{k: _parse(v) for k, v in r.items()} for r in csv.DictReader(f)]
         if party is not None and (out / "party_vote_backtest.json").exists():
             summary["house"]["backtest"] = json.loads((out / "party_vote_backtest.json").read_text(encoding="utf-8"))
 
     (out / "forecast.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
     _write_csv(out / "history.csv", hist)
+    every = [(pair, s) for s in seats] + [(c["pair"], s) for c in contests for s in c["seats"]]
     _write_csv(out / "seats.csv", [{
-        "electorate": s["name"], "leader_election_night": s["leader_election_night"],
+        "electorate": s["name"], "first": pr[0], "second": pr[1], "leader_election_night": s["leader_election_night"],
         "preliminary_margin": s["preliminary"]["margin"], "specials_mean": s["specials"]["mean"],
         "specials_q05": s["specials"]["q05"], "specials_q95": s["specials"]["q95"],
         **{f"margin_{k}": v for k, v in s["margin"].items()},
-        **{f"p_{p}": s["p_win"][p] for p in pair}, "trailing_needs_share": s["trailing"]["needs_share"]}
-        for s in seats])
+        **{f"p_{p}": s["p_win"][p] for p in pr}, "trailing_needs_share": s["trailing"]["needs_share"]}
+        for pr, s in every])
     _write_csv(out / "candidates.csv", [{"electorate": s["name"], **{k: v for k, v in c.items() if k != "final"},
                                          **{f"final_{k}": v for k, v in c["final"].items()}}
-                                        for s in seats for c in s["candidates"]])
+                                        for _, s in every for c in s["candidates"]])
     first = len(seats)
     np.savez_compressed(out / "margins.npz", names=np.array([s["name"] for s in seats]),
                         margin=(sim.final[:, :first, 1] - sim.final[:, :first, 0]).astype(np.int32),
@@ -584,9 +795,16 @@ def forecast_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = 
     thin = np.linspace(0, n - 1, min(n, 5000)).astype(int)
     _write_csv(out / "margin_draws.csv", [{"electorate": s["name"], "margin": int(sim.final[i, j, 1] - sim.final[i, j, 0])}
                                           for j, s in enumerate(seats) for i in thin])
-    for s in seats:
-        _log(f"specials: {s['name']}: election night {s['preliminary']['margin']:+d} ({pair[1]} - {pair[0]}), "
-             f"P({pair[1]}) {s['p_win'][pair[1]]:.2f}, final margin {s['margin']['q50']:+.0f} "
+    for ft, cs, csum in zip(fitted, csims, contests):
+        cm = (cs.final[:, :, 1] - cs.final[:, :, 0]).astype(np.int32)
+        _write_csv(out / f"history_{csum['slug']}.csv", history_rows(ft["data"], ft["contest"].history, csum["pair"]))
+        np.savez_compressed(out / f"margins_{csum['slug']}.npz", names=np.array([x["name"] for x in csum["seats"]]),
+                            margin=cm, special_share=_share(cs.specials.sum(2)).astype(np.float32))
+        _write_csv(out / f"margin_draws_{csum['slug']}.csv",
+                   [{"electorate": x["name"], "margin": int(cm[i, j])} for j, x in enumerate(csum["seats"]) for i in thin])
+    for pr, s in every:
+        _log(f"specials: {s['name']}: election night {s['preliminary']['margin']:+d} ({pr[1]} - {pr[0]}), "
+             f"P({pr[1]}) {s['p_win'][pr[1]]:.2f}, final margin {s['margin']['q50']:+.0f} "
              f"({s['margin']['q05']:+.0f} to {s['margin']['q95']:+.0f})")
     return summary
 
@@ -609,6 +827,7 @@ def run_specials(cfg: Config, *, quick: bool = False, run_backtest: bool = True,
     if scfg.get("parliament"):                # the House also reads past electorates won and the seat allocator
         extra = [cfg.paths.root / scfg["parliament"]["data_dir"], cfg.paths.root / ELECTORATE_SEATS,
                  Path(__file__).parents[1] / "forecast" / "seats.py"]
+    extra += [cfg.paths.root / c["data_dir"] for c in scfg.get("other_contests") or []]
     inputs = [cfg.paths.root / scfg["data_dir"], *extra, cfg.paths.config / "specials.yml", Path(__file__).parent,
               f"quick={quick}", f"backtest={run_backtest}"]
     return StageCache(cfg.paths.processed / "stamps").run(

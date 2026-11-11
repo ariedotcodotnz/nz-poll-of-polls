@@ -70,6 +70,7 @@ class BoothTable:
     sections: list[str]          # "advance" or "election_day" per place
     columns: list[str]
     votes: np.ndarray
+    suburbs: list[str] = field(default_factory=list)   # the suburb heading each place is listed under, if any
 
 
 @dataclass
@@ -155,17 +156,17 @@ def read_official_csv(path: Path, year: int) -> ElectorateCount:
 
     advance, eday, small = np.zeros(C), np.zeros(C), np.zeros(C)
     specials: dict[str, np.ndarray] = {}
-    places, sections, booth_rows = [], [], []
-    section, total, informal = None, None, 0
+    places, sections, booth_rows, suburbs = [], [], [], []
+    section, total, informal, suburb = None, None, 0, ""
     for r in rows[3:]:
         if not r or not any(x.strip() for x in r):
             continue
         head = r[0].strip()
         if head == "Advance Voting Places":
-            section = "advance"
+            section, suburb = "advance", ""
             continue
         if head == "Voting Places":
-            section = "election_day"
+            section, suburb = "election_day", ""
             continue
         label = r[1].strip() if len(r) > 1 else ""
         if label.endswith(" Total") and not head:
@@ -191,7 +192,9 @@ def read_official_csv(path: Path, year: int) -> ElectorateCount:
             raise ValueError(f"{path}: voting place {label!r} before any section heading")
         else:
             (advance if section == "advance" else eday)[:] += v
+            suburb = head or suburb               # a blank first cell repeats the suburb above
             places.append(f"{head}, {label}" if head else label)
+            suburbs.append(suburb)
             sections.append(section)
             booth_rows.append(v)
         informal += row_informal
@@ -215,7 +218,7 @@ def read_official_csv(path: Path, year: int) -> ElectorateCount:
         year=year, electorate=name, number=number, candidates=candidates,
         parties=[parties[c] for c in candidates], advance=advance, election_day=eday, ordinary=ordinary,
         specials=specials, total=total, informal=informal, official=True,
-        booths=BoothTable(places, sections, candidates, np.array(booth_rows)), source=str(path))
+        booths=BoothTable(places, sections, candidates, np.array(booth_rows), suburbs), source=str(path))
 
 
 # ----------------------------------------------------------------------------------------- preliminary xlsx

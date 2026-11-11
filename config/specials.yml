@@ -61,6 +61,48 @@ electorates:
       "SHEPHERD, Matt": Opportunity
       "YOUNG, Barry": Outdoors
 
+# Close seats between another pair of parties. Each contest is fitted on its own past official results (the same
+# model, with the first party in place of National) and needs the `parliament` section below, which supplies the
+# country's party-vote lean for that pair. The official count's change to the ordinary votes is the one learned
+# from the seats above.
+other_contests:
+  - pair: [Labour, Green]
+    title: "Wellington Bays: Labour against the Greens"
+    # Official results by voting place of the seats where Labour's and the Greens' candidates both mattered:
+    # Rongotai and Wellington Central (Wellington Bays was drawn from them) and Auckland Central, 2017 to 2023.
+    data_dir: data/reference/electorate-seats-labour-green
+    electorates:
+      - name: Wellington Bays
+        # Past results redrawn on this seat's boundaries (a notional history). Wellington Bays is the former
+        # Rongotai plus Brooklyn and Mount Cook from Wellington Central, so each past election's Wellington Bays
+        # is all of Rongotai and Wellington Central's voting places in those two suburbs (matched in a place's
+        # name, address or suburb heading; "Brooklyn" also takes Central Park Flats on Brooklyn Road). Special
+        # votes are not counted by voting place: the moved places get Wellington Central's special votes in
+        # proportion to their ordinary votes, shifted from their own ordinary vote as the whole electorate's
+        # were. What is left of Wellington Central stays in the fit as "Wellington Central (rest)".
+        # `history: Rongotai` would use that seat's past results unchanged instead.
+        history:
+          parts:
+            - electorate: Rongotai
+            - electorate: Wellington Central
+              places: [Brooklyn, Mt Cook, Mount Cook]
+        note: Wellington Bays is new in 2026. Its past results here are notional, all of Rongotai's votes and
+          those cast at Wellington Central's voting places in Brooklyn and Mount Cook, which is where the
+          boundary review took it from. People can vote anywhere, so voting places only approximate the
+          area. Julie Anne Genter won Rongotai from Labour in 2023.
+        # Election-night candidate votes as republished by RNZ (8 Nov 2026, 3:45am, 100% counted). With the
+        # Commission's workbook, give `file:` and a candidate-to-party map instead, as for the seats above.
+        # RNZ lists the first five candidates and the total; the rest (NZ First, Money Free Party and two
+        # independents) are the remainder.
+        valid_votes: 40699
+        candidates:
+          "RENNEY, Craig": {party: Labour, votes: 15307}
+          "GENTER, Julie Anne": {party: Green, votes: 15167}
+          "MUTHU, Karunā": {party: National, votes: 5550}
+          "KINGDON-BEBB, Kayla": {party: Opportunity, votes: 2115}
+          "McKEE, Nicole": {party: ACT, votes: 1450}
+          "Four other candidates": {party: Other, votes: 1110}
+
 # How many special votes. Each electorate's specials per ordinary vote moves with the national figure.
 volume:
   reference:                      # the last official count (Electoral Commission, official results, 3 Nov 2023)

@@ -44,6 +44,13 @@ copies of its preliminary results. To rebuild `party-votes.csv`, put each electi
 `python -m pollofpolls.specials.national <folder> data/reference/special-votes/party-votes.csv`; every file is
 checked against its own total row.
 
+Seats between another pair of parties use a folder of their own (`other_contests[].data_dir`).
+`data/reference/electorate-seats-labour-green/` holds the official results by voting place of Rongotai, Wellington
+Central and Auckland Central for 2017, 2020 and 2023 (Internet Archive copies), the seats where both Labour's and
+the Greens' candidates mattered. Wellington Bays' election-night candidate votes are in the config itself, read
+from RNZ's copy of the preliminary result; RNZ prints the first five candidates and the total, so the other four
+candidates are one row.
+
 Any electorate whose files are in the folder joins the history automatically, so adding more past electorates
 (all 72 seats of an election, say) sharpens the estimates of how much seats differ, at no other cost.
 
@@ -96,6 +103,22 @@ overhang. `government` has a majority with more than half the House, `opposition
 election-night House by the only things that move the margin: list seats lost by governing parties (2 each), and
 for a party in overhang its entitlement and its electorates (1 each), less any growth in the other side's overhang.
 
+**Seats between other parties** (`other_contests`). The electorate model is fitted to one pair of parties, so a
+close seat between two others gets a fit of its own: the same model on that pair's past results, with the first
+party in place of National. Its election-wide shift follows the party-vote model's domestic lean of the second
+party against the first (`partyvote.pair_link`), and its enrolment shift is the difference between the two parties'
+`rule_change.party_lean` draws, so within a simulation it shares the national special-vote count, the party-vote
+lean and the enrolment change with every other seat. The official count's change to the ordinary votes reuses the
+posterior learned from the main seats. A new electorate gets a notional history (`history.parts`, `run.notional_history`): its past results redrawn on
+its boundaries from voting places. Wellington Bays is all of Rongotai plus Wellington Central's voting places in
+Brooklyn and Mount Cook (9, 11 and 6 places in 2017, 2020 and 2023, about 10 to 12% of that electorate's ordinary
+votes). Special votes are not counted by voting place, so the moved places take Wellington Central's special votes
+in proportion to their ordinary votes, shifted from the places' own ordinary vote as the whole electorate's
+special votes were shifted from its ordinary vote. The rest of Wellington Central stays in the fit as its own
+seat, so every vote is counted once. Voting places only approximate an area, because people can vote anywhere.
+(`history: <seat>` instead uses one old seat's results unchanged.) The simulated winner feeds the House
+like any other seat; between two parties that are not in overhang it changes nobody's seat total.
+
 All models are fitted with NUTS (NumPyro). Simulations draw one parameter set, one national lean and election-wide
 shift shared by every seat, then each seat's change to ordinary votes, special-vote count, overseas share and
 multinomial split, and the country's party votes.
@@ -109,6 +132,9 @@ specials split like election night, the seat's swing at its previous election, a
 normal error with its root-mean-square error on the training elections. With twelve seat-elections and no seat
 that changed hands, it is a sanity check: the model should be calibrated and at least as good on CRPS.
 
+Each contest under `other_contests` is backtested the same way on its own past results
+(`backtest_<pair>.csv`), from official ordinary votes where no election-night count is archived.
+
 The party vote is backtested the same way over all six elections (`party_vote_backtest.csv`): each party's final
 share against the model's median and intervals, against "specials split like election night" and against the
 average past lean, and, given the electorates each party won, whether the seat count came out right.
@@ -118,6 +144,7 @@ average past lean, and, given the electorates each party won, whether the seat c
 | To | Edit |
 |---|---|
 | forecast another seat | add its preliminary workbook to `<data_dir>/<year>/` and an entry under `electorates`, with every candidate's party |
+| forecast a close seat between two other parties | an entry under `other_contests`: the `pair`, a `data_dir` of past official results where both parties stood, and each seat's election-night votes (or its workbook as `file`), with `history.parts` listing the old electorates, and which of their voting places, a new electorate was made from |
 | update the national estimate | `volume.forecast` (`special_votes_estimate`, `total_votes_estimate`, `overseas_votes`) |
 | change who counts as each side | `parliament.government`, `parliament.opposition` |
 | change a close seat the model cannot simulate | `parliament.assumed_seats` (`p_flip`) |
@@ -133,7 +160,8 @@ election becomes history for the next one.
 
 ## Static charts
 
-`Rscript r/specials_charts.R` draws eight charts in the BBC's house style (ggplot2 with `bbplot::bbc_style()`) from
+`Rscript r/specials_charts.R` draws eight charts, and one more for each contest under `other_contests`
+(`09-labour-green-seats`: Wellington Bays), in the BBC's house style (ggplot2 with `bbplot::bbc_style()`) from
 `output/specials/`, as SVG and PNG in `output/specials/charts/`. It needs R with ggplot2, jsonlite, svglite, ragg
 and bbplot (`remotes::install_github("bbc/bbplot")`). Run it after `pollofpolls specials`; every figure and
 headline number is read from `forecast.json` and the CSVs, but the headlines' wording is fixed in the script, so

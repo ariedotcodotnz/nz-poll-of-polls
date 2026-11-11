@@ -310,3 +310,51 @@ p8 <- ggplot(hist, aes(year, diff, colour = party)) +
        caption = "Source: Electoral Commission official results by voting place, summed over all electorates") +
   style()
 save(p8, "08-special-vote-lean", height = 540)
+
+# ------------------------------------------------- 9. seats between other pairs of parties (Wellington Bays)
+# One chart per contest in forecast.json's `contests`: the same histogram as chart 7, in the two parties' colours.
+for (ct in fc$contests) {
+  cp <- unlist(ct$pair)
+  draws_csv <- file.path(src, paste0("margin_draws_", ct$slug, ".csv"))
+  if (!file.exists(draws_csv)) next
+  cd <- read.csv(draws_csv, check.names = FALSE, encoding = "UTF-8")
+  draws <- max(table(cd$electorate))
+  ci <- do.call(rbind, lapply(ct$seats, function(s) data.frame(
+    electorate = s$name, night = s$preliminary$margin, median = s$margin$q50,
+    strip = paste0(s$name, ": ", cp[2], " ", pct(s$p_win[[cp[2]]]), ", ", cp[1], " ", pct(s$p_win[[cp[1]]])))))
+  cd <- merge(cd, ci, by = "electorate")
+  cd$strip <- factor(cd$strip, ci$strip)
+  ci$strip <- factor(ci$strip, ci$strip)
+  cd <- cd[abs(cd$margin) <= quantile(abs(cd$margin), 0.995), ]
+  cd$side <- ifelse(cd$margin > 0, cp[2], cp[1])
+  s1 <- ct$seats[[1]]
+  fav <- if (s1$p_win[[cp[2]]] >= s1$p_win[[cp[1]]]) cp[2] else cp[1]
+  who <- sub("^(.*), (.*)$", "\\2 \\1", s1$contenders[[fav]])
+  who <- gsub("\\b([A-Z])([A-Z]+)\\b", "\\1\\L\\2", who, perl = TRUE)
+  flips <- fav != s1$leader_election_night
+  title <- if (length(ct$seats) == 1) {
+    paste0(s1$name, ": ", who, if (flips) " is likely to overtake" else " is likely to hold on")
+  } else paste0("Where the ", cp[1], "–", cp[2], " seats could land")
+  p9 <- ggplot(cd, aes(margin, fill = side)) +
+    geom_histogram(aes(y = after_stat(count / draws)), binwidth = 100, boundary = 0, colour = "white", linewidth = 0.2) +
+    geom_vline(xintercept = 0, linewidth = 0.8, colour = "#333333") +
+    geom_vline(data = ci, aes(xintercept = night), colour = INK, linewidth = 0.6, linetype = "22") +
+    geom_hline(yintercept = 0, linewidth = 1, colour = "#333333") +
+    scale_fill_manual(values = colours[cp], breaks = rev(cp), labels = paste(rev(cp), "ahead")) +
+    scale_x_continuous(labels = function(x) ifelse(x == 0, "0", paste0(ifelse(x > 0, "+", "−"), num(abs(x))))) +
+    scale_y_continuous(labels = function(x) pct(x), expand = expansion(mult = c(0, 0.08))) +
+    labs(title = title,
+         subtitle = paste0(if (length(ct$seats) == 1) paste0(cp[2], " ", pct(s1$p_win[[cp[2]]]), ", ", cp[1], " ",
+                                                             pct(s1$p_win[[cp[1]]]), " to win. ") else "",
+                           "Share of simulated official counts by final\nmargin in votes, ", cp[2], " minus ", cp[1],
+                           ". Dashed line: the election-night margin"),
+         caption = paste0(source_line, " as republished by RNZ")) +
+    style() +
+    theme(axis.text = element_text(size = 13), legend.justification = "left")
+  if (length(ct$seats) > 1) {
+    p9 <- p9 + facet_wrap(~strip, ncol = 2) +
+      theme(strip.text = element_text(family = "Helvetica", size = 15, face = "bold", hjust = 0,
+                                      margin = margin(b = 8, t = 6)), panel.spacing = unit(1.4, "lines"))
+  }
+  save(p9, paste0("09-", gsub("_", "-", ct$slug), "-seats"), height = 520)
+}

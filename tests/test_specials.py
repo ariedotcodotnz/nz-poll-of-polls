@@ -372,6 +372,7 @@ def test_stage_fingerprint_covers_what_the_house_reads(tmp_path, monkeypatch):
     assert any(i.endswith("electorate_seats.csv") for i in seen["inputs"])
     assert any(i.endswith("forecast/seats.py") for i in seen["inputs"])
     assert any(i.endswith(CFG["parliament"]["data_dir"]) for i in seen["inputs"])
+    assert all(any(i.endswith(c["data_dir"]) for i in seen["inputs"]) for c in CFG["other_contests"])
 
 
 def test_party_vote_simulation_follows_the_lean():
@@ -395,6 +396,76 @@ def test_party_vote_simulation_follows_the_lean():
     # the link to the seats: Labour's own lean, and everyone else's pooled
     z = pv.link_covariate(lean, NIGHT_VOTES, 1)
     assert np.allclose(z[:, 0], 0.3) and np.allclose(z[:, 1], 0.0)
+    # ... and for a contest between two other parties: the Greens against Labour
+    zg = pv.link_covariate(lean, NIGHT_VOTES, 2, 1)
+    rest = NIGHT_VOTES.sum() - NIGHT_VOTES[1] - NIGHT_VOTES[2]
+    assert np.allclose(zg[:, 0], -0.3) and np.allclose(zg[:, 1], -0.3)   # nobody else moved, Labour gained
+    lean[:, :, 1] = 0.5                                    # now the Greens lean further than Labour
+    assert np.allclose(pv.link_covariate(lean, NIGHT_VOTES, 2, 1)[:, 0], 0.2) and rest > 0
+
+
+@needs_data
+def test_a_contest_between_two_other_parties_loads_and_counts():
+    """Wellington Bays: votes given in the config, a notional history from voting places, and a flip that moves
+    one electorate."""
+    from pollofpolls.config import Config
+    from pollofpolls.specials import national as natdata
+    from pollofpolls.specials import partyvote as pv
+    from pollofpolls.specials import run
+    from pollofpolls.specials.model import build_specials_data
+    from pollofpolls.specials.simulate import Simulation
+    c = run.load_inputs(Config(ROOT)).contests[0]
+    seat = c.seats[0]
+    assert c.pair == ["Labour", "Green"] and c.slug == "labour_green"
+    assert c.keys == ["wellington bays (notional)"]
+    start = seat.grouped(seat.preliminary, c.pair)
+    assert start.tolist() == [15307, 15167, 40699 - 15307 - 15167] and seat.booths is None
+    past = build_specials_data(c.history, c.pair)
+    assert past.years == [2017, 2020, 2023] and past.n_rows == 9
+    assert past.labels == ["Auckland Central", "Wellington Bays (notional)", "Wellington Central (rest)"]
+    # the notional history moves Wellington Central's Brooklyn and Mount Cook voting places and loses no vote
+    raw = load_history(c.data_dir, CFG["election"]).counts
+    for year in past.years:
+        old = {h.electorate: h for h in raw if h.year == year}
+        new = {h.electorate: h for h in c.history if h.year == year}
+        central, bays = old["Wellington Central"], new["Wellington Bays (notional)"]
+        mask = run.moved_places(central, ["Brooklyn", "Mt Cook", "Mount Cook"])
+        assert 5 <= mask.sum() <= 12 and 0.08 < central.booths.votes[mask].sum() / central.ordinary.sum() < 0.14
+        assert not mask[[i for i, x in enumerate(central.booths.places) if "Karori" in x]].any()
+        moved = central.grouped(central.booths.votes[mask].sum(0), c.pair)
+        assert np.array_equal(bays.ordinary, old["Rongotai"].grouped(old["Rongotai"].ordinary, c.pair) + moved)
+        for part in ("ordinary", "total"):
+            was = sum(h.grouped(getattr(h, part), c.pair) for h in (old["Rongotai"], central))
+            assert np.array_equal(getattr(bays, part) + getattr(new["Wellington Central (rest)"], part), was)
+        # the moved places take special votes in proportion to their ordinary votes
+        assert abs(bays.special_total.sum() - old["Rongotai"].special_total.sum()
+                   - central.special_total.sum() * moved.sum() / central.ordinary.sum()) < 3
+    with pytest.raises(ValueError, match="no voting place matches"):
+        run.notional_history(raw, "X", [{"electorate": "Rongotai"},
+                                        {"electorate": "Wellington Central", "places": ["Atlantis"]}], c.pair)
+    whole = run.notional_history(raw, "X", [{"electorate": "Rongotai"}], c.pair)     # a seat used whole is renamed
+    assert sorted({h.electorate for h in whole}) == ["Auckland Central", "Wellington Central", "X"]
+    bad = copy.deepcopy(c.cfg["electorates"][0])
+    bad["valid_votes"] += 1
+    with pytest.raises(ValueError, match="valid votes"):
+        run.count_from_config(bad, 2026)
+    # the national lean of the Greens against Labour, each past election
+    names = natdata.PartyNames(CFG["parliament"]["parties"])
+    h = natdata.load_history(ROOT / CFG["parliament"]["data_dir"], names, before=CFG["election"])
+    lk = pv.pair_link(h, h.parties.index("Green"), h.parties.index("Labour"))
+    assert lk.shape == (6, 2) and (lk[:, 0] > 0).sum() == 5   # domestic specials lean Green of Labour, bar 2020
+    assert np.allclose(pv.pair_link(h, 1), pv.build_party_vote_data(h, "Labour").link)
+    # a simulated flip takes the electorate from Labour and gives it to the Greens
+    party = run.PartyVote(CFG["parliament"], names, h, None, None, NIGHT_VOTES, {}, natdata.read_electorates(
+        ROOT / CFG["parliament"]["data_dir"] / "electorates-2026.csv"), (1.0, 1.0))
+    final = np.zeros((2, 1, 3))
+    final[0, 0], final[1, 0] = [100, 90, 5], [90, 100, 5]
+    sim = Simulation(final, np.zeros((2, 1, 2, 3)), np.zeros((2, 1, 3)), np.zeros((2, 1, 2, 2)), np.zeros((2, 2, 2)))
+    party.cfg = {**party.cfg, "assumed_seats": []}
+    won = run.electorate_seats(party, [(c.pair, [Target("Wellington Bays", c.keys[0], start)], sim)],
+                               np.random.default_rng(0))
+    lab, grn = names.groups.index("Labour"), names.groups.index("Green")
+    assert won[1, lab] == won[0, lab] - 1 and won[1, grn] == won[0, grn] + 1 and won.sum(1).tolist() == [71, 71]
 
 
 def test_party_vote_history_and_fit():
@@ -456,6 +527,8 @@ def test_stage_end_to_end(tmp_path):
     shutil.copytree(ROOT / "config", tmp_path / "config")
     shutil.copytree(DATA, tmp_path / CFG["data_dir"])
     shutil.copytree(ROOT / CFG["parliament"]["data_dir"], tmp_path / CFG["parliament"]["data_dir"])
+    for contest in CFG["other_contests"]:
+        shutil.copytree(ROOT / contest["data_dir"], tmp_path / contest["data_dir"])
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'x'\n")
     cfg = Config(tmp_path)
     summary = forecast_specials(cfg, quick=True, run_backtest=False)
@@ -493,3 +566,20 @@ def test_stage_end_to_end(tmp_path):
     assert "NZ First" in page.party_vote_table() and "14 ways" in page.routes_text()
     assert "NZ First" in page.house_seats_table() and "Nelson" in page.other_seats_table()
     assert page.figure("house").data and page.house_tiles().count(".tile}") == 3
+    # the Labour-Green contest: its own seats, files and section of the page
+    c = summary["contests"][0]
+    bays = c["seats"][0]
+    assert c["pair"] == ["Labour", "Green"] and bays["name"] == "Wellington Bays"
+    assert bays["history"] == "Wellington Bays (notional)"
+    assert abs(bays["p_win"]["Labour"] + bays["p_win"]["Green"] + bays["p_win"]["tie"] - 1) < 1e-9
+    assert bays["preliminary"]["margin"] == -140 and bays["preliminary"]["advance"] is None
+    assert set(c["scenarios"]) == set(summary["scenarios"]) and c["data"]["n_seat_elections"] == 9
+    for f in ["history_labour_green.csv", "margins_labour_green.npz", "margin_draws_labour_green.csv"]:
+        assert (out / f).exists(), f
+    with open(out / "seats.csv", encoding="utf-8") as f:
+        assert "Wellington Bays,Labour,Green" in f.read()
+    section = page.contests[0].section()
+    assert "{#contest-labour-green}" in section and "Julie Anne Genter" in section and "Rongotai" in section
+    assert section.count("```{=html}") == 4 and "in advance" not in section and "On those boundaries" in section
+    assert "#contest-labour-green" in page.other_seats_table()
+    assert "Wellington Bays" not in page.seat_table()      # the main tables stay National against Labour
